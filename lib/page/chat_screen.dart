@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:chat_app/model/message_model.dart';
+import 'package:chat_app/model/message_status.dart';
 import 'package:chat_app/provider/message_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,6 +29,8 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  Timer? _typingTimer;
+  bool _isTyping = false;
 
   @override
   void initState() {
@@ -41,6 +44,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void _sendMessage() {
     if (_messageController.text.trim().isEmpty) return;
+
+    // Stop typing indicator before sending
+    if (_isTyping) {
+      _isTyping = false;
+      _typingTimer?.cancel();
+      ref.read(messageNotifierProvider.notifier).sendTypingIndicator(
+        conversationId: widget.conversationId,
+        isTyping: false,
+      );
+    }
 
     ref
         .read(messageNotifierProvider.notifier)
@@ -67,10 +80,63 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
+  void _onTextChanged(String text) {
+    // Send typing indicator when user starts typing
+    if (!_isTyping && text.isNotEmpty) {
+      _isTyping = true;
+      ref.read(messageNotifierProvider.notifier).sendTypingIndicator(
+        conversationId: widget.conversationId,
+        isTyping: true,
+      );
+
+      // Set timer to stop typing indicator after 3 seconds of inactivity
+      _typingTimer?.cancel();
+      _typingTimer = Timer(const Duration(seconds: 3), () {
+        if (mounted && _isTyping) {
+          _isTyping = false;
+          ref.read(messageNotifierProvider.notifier).sendTypingIndicator(
+            conversationId: widget.conversationId,
+            isTyping: false,
+          );
+        }
+      });
+    } else if (text.isEmpty && _isTyping) {
+      // User cleared the input, stop typing indicator
+      _isTyping = false;
+      _typingTimer?.cancel();
+      ref.read(messageNotifierProvider.notifier).sendTypingIndicator(
+        conversationId: widget.conversationId,
+        isTyping: false,
+      );
+    } else if (text.isNotEmpty) {
+      // User is still typing, reset the timer
+      _typingTimer?.cancel();
+      _typingTimer = Timer(const Duration(seconds: 3), () {
+        if (mounted && _isTyping) {
+          _isTyping = false;
+          ref.read(messageNotifierProvider.notifier).sendTypingIndicator(
+            conversationId: widget.conversationId,
+            isTyping: false,
+          );
+        }
+      });
+    }
+  }
+
   @override
   void dispose() {
+    _typingTimer?.cancel();
     _messageController.dispose();
     _scrollController.dispose();
+
+    // Send stop typing indicator when leaving the screen
+    if (_isTyping) {
+      ref.read(messageNotifierProvider.notifier).sendTypingIndicator(
+        conversationId: widget.conversationId,
+        isTyping: false,
+      );
+    }
+
     super.dispose();
   }
 
@@ -241,7 +307,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Widget _buildMessageBubble(MessageModel message, bool isSentByMe) {
     // Auto-mark received messages as read when they are displayed
-    if (!isSentByMe && message.isUnread) {
+    if (!isSentByMe && message.isUnread && message.id != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ref.read(messageNotifierProvider.notifier).markAsRead(message.id!);
       });
@@ -271,7 +337,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    color: isSentByMe ? Colors.blue : const Color(0xFF2C2C2E),
+                    color: _getMessageColor(message, isSentByMe),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -279,11 +345,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     style: const TextStyle(color: Colors.white, fontSize: 16),
                   ),
                 ),
-                if (!isSentByMe && message.isUnread) ...[
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Message status indicator (only for sent messages)
+                    if (isSentByMe) ...[
+                      _buildMessageStatusIndicator(message),
+                      const SizedBox(width: 8),
+                    ],
+                    // Unread indicator for received messages
+                    if (!isSentByMe && message.isUnread) ...[
                       Container(
                         width: 8,
                         height: 8,
@@ -302,14 +374,139 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         ),
                       ),
                     ],
-                  ),
-                ],
+                    // Timestamp for all messages
+                    if (message.createdAt != null)
+                      Text(
+                        _formatMessageTime(message.createdAt!),
+                        style: TextStyle(
+                          color: Colors.grey.shade400,
+                          fontSize: 11,
+                        ),
+                      ),
+                  ],
+                ),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  Color _getMessageColor(MessageModel message, bool isSentByMe) {
+    if (!isSentByMe) return const Color(0xFF2C2C2E);
+
+    // Different colors based on message status
+    switch (message.status) {
+      case MessageStatus.sending:
+        return Colors.blue.shade300; // Lighter blue for sending
+      case MessageStatus.sent:
+        return Colors.blue.shade600; // Normal blue for sent
+      case MessageStatus.delivered:
+        return Colors.blue.shade700; // Darker blue for delivered
+      case MessageStatus.read:
+        return Colors.blue.shade800; // Darkest blue for read
+      case MessageStatus.failed:
+        return Colors.red.shade400; // Red for failed
+    }
+  }
+
+  Widget _buildMessageStatusIndicator(MessageModel message) {
+    switch (message.status) {
+      case MessageStatus.sending:
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.5,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white70),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'Sending...',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        );
+
+      case MessageStatus.sent:
+        return Icon(
+          Icons.done,
+          size: 16,
+          color: Colors.white70,
+        );
+
+      case MessageStatus.delivered:
+        return Icon(
+          Icons.done_all,
+          size: 16,
+          color: Colors.white70,
+        );
+
+      case MessageStatus.read:
+        return Icon(
+          Icons.done_all,
+          size: 16,
+          color: const Color(0xFF0D7FF2),
+        );
+
+      case MessageStatus.failed:
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 16,
+              color: Colors.red.shade200,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'Failed',
+              style: TextStyle(
+                color: Colors.red.shade200,
+                fontSize: 11,
+              ),
+            ),
+            const SizedBox(width: 4),
+            GestureDetector(
+              onTap: () {
+                // Retry sending the message
+                // You could implement retry logic here
+              },
+              child: Text(
+                'Retry',
+                style: TextStyle(
+                  color: Colors.blue.shade200,
+                  fontSize: 11,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+          ],
+        );
+    }
+  }
+
+  String _formatMessageTime(DateTime messageTime) {
+    final now = DateTime.now();
+    final difference = now.difference(messageTime);
+
+    if (difference.inMinutes < 1) {
+      return 'now';
+    } else if (difference.inHours < 1) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inDays < 1) {
+      return '${difference.inHours}h ago';
+    } else {
+      return '${messageTime.day}/${messageTime.month}';
+    }
   }
 
   Widget _buildMessageInput() {
@@ -334,7 +531,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   hintStyle: TextStyle(color: Colors.grey),
                   border: InputBorder.none,
                 ),
-                onSubmitted: (_) => _sendMessage(),
+                onChanged: _onTextChanged,
+                onSubmitted: (_) {
+                  _sendMessage();
+                  _onTextChanged(''); // Stop typing indicator when sending
+                },
               ),
             ),
           ),

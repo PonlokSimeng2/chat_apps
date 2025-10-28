@@ -23,7 +23,7 @@ class ChatListItemPage extends ConsumerStatefulWidget {
 }
 
 class _ChatListItemPageState extends ConsumerState<ChatListItemPage> {
-  String? lastMessage;
+  MessageModel? _lastMessage;
   int unreadCount = 0;
   bool isLoading = true;
   RealtimeChannel? _messageChannel;
@@ -106,13 +106,13 @@ class _ChatListItemPageState extends ConsumerState<ChatListItemPage> {
       final unread = results[1] as int;
 
       setState(() {
-        lastMessage = lastMsg?.content ?? 'No messages yet';
+        _lastMessage = lastMsg;
         unreadCount = unread;
         isLoading = false;
       });
     } catch (e) {
       setState(() {
-        lastMessage = 'Error loading messages';
+        _lastMessage = null;
         unreadCount = 0;
         isLoading = false;
       });
@@ -152,26 +152,30 @@ class _ChatListItemPageState extends ConsumerState<ChatListItemPage> {
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: unreadCount > 0 ? const Color(0xFF1E293B) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
         child: Row(
-        children: [
-          // Avatar with online indicator
-          Stack(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(28),
-                  image: DecorationImage(
-                    image: NetworkImage(
-                      widget.user.profilePictureUrl ??
-                          'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
+          children: [
+            // Avatar with online indicator
+            Stack(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(28),
+                    image: DecorationImage(
+                      image: NetworkImage(
+                        widget.user.profilePictureUrl ??
+                            'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
+                      ),
+                      fit: BoxFit.cover,
                     ),
-                    fit: BoxFit.cover,
                   ),
                 ),
-              ),
-              if (widget.user.isOnline == true)
+                // Online status indicator
                 Positioned(
                   right: 0,
                   bottom: 0,
@@ -179,7 +183,9 @@ class _ChatListItemPageState extends ConsumerState<ChatListItemPage> {
                     width: 16,
                     height: 16,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0D7FF2),
+                      color: widget.user.isOnline == true
+                          ? const Color(0xFF10B981)
+                          : Colors.grey,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: const Color(0xFF111827),
@@ -188,65 +194,161 @@ class _ChatListItemPageState extends ConsumerState<ChatListItemPage> {
                     ),
                   ),
                 ),
-            ],
-          ),
-
-          const SizedBox(width: 12),
-
-          // Chat info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.user.displayName,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: unreadCount > 0
-                        ? FontWeight.bold
-                        : FontWeight.normal,
+                // Unread indicator dot
+                if (unreadCount > 0)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0D7FF2),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: const Color(0xFF111827),
+                          width: 2,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  lastMessage ?? 'No messages yet',
-                  style: TextStyle(
-                    color: unreadCount > 0 ? Colors.white : Colors.grey,
-                    fontSize: 14,
-                    fontWeight: unreadCount > 0
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
               ],
             ),
-          ),
 
-          // Unread count
-          if (unreadCount > 0)
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                color: const Color(0xFF0D7FF2),
-                borderRadius: BorderRadius.circular(12),
+            const SizedBox(width: 12),
+
+            // Chat info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          widget.user.displayName,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: unreadCount > 0
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      // Message time
+                      if (_lastMessage != null && _lastMessage!.createdAt != null)
+                        Text(
+                          _formatMessageTime(_lastMessage!.createdAt!),
+                          style: TextStyle(
+                            color: unreadCount > 0 ? const Color(0xFF0D7FF2) : Colors.grey,
+                            fontSize: 12,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _getLastMessageText(),
+                          style: TextStyle(
+                            color: unreadCount > 0 ? Colors.white : Colors.grey,
+                            fontSize: 14,
+                            fontWeight: unreadCount > 0
+                                ? FontWeight.w500
+                                : FontWeight.normal,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                      // Message status indicator for sent messages
+                      if (_lastMessage != null && _lastMessage!.senderId == widget.currentUserId)
+                        _buildMessageStatusIndicator(),
+                    ],
+                  ),
+                ],
               ),
-              child: Center(
-                child: Text(
-                  unreadCount.toString(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
+            ),
+
+            const SizedBox(width: 8),
+
+            // Unread count badge
+            if (unreadCount > 0)
+              Container(
+                constraints: const BoxConstraints(
+                  minWidth: 24,
+                  minHeight: 24,
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0D7FF2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    unreadCount > 99 ? '99+' : unreadCount.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
-            ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
+  }
+
+  Widget _buildMessageStatusIndicator() {
+    if (_lastMessage == null) return const SizedBox.shrink();
+
+    // For messages sent by current user
+    if (_lastMessage!.senderId == widget.currentUserId) {
+      return Icon(
+        Icons.done_all,
+        size: 16,
+        color: _lastMessage!.readAt != null
+            ? const Color(0xFF0D7FF2)
+            : Colors.grey,
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  String _getLastMessageText() {
+    if (_lastMessage == null) return 'No messages yet';
+
+    if (_lastMessage!.senderId == widget.currentUserId) {
+      if (_lastMessage!.isEdited == true) {
+        return 'You: ${_lastMessage!.content} (edited)';
+      }
+      return 'You: ${_lastMessage!.content}';
+    }
+
+    return _lastMessage!.content ?? '';
+  }
+
+  String _formatMessageTime(DateTime messageTime) {
+    final now = DateTime.now();
+    final difference = now.difference(messageTime);
+
+    if (difference.inMinutes < 1) {
+      return 'now';
+    } else if (difference.inHours < 1) {
+      return '${difference.inMinutes}m';
+    } else if (difference.inDays < 1) {
+      return '${difference.inHours}h';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}d';
+    } else {
+      return '${messageTime.day}/${messageTime.month}';
+    }
   }
 }
