@@ -51,18 +51,32 @@ class MessageNotifier extends _$MessageNotifier {
         'conversation_id': conversationId.toString(),
         'user_id': currentUser.id,
         'token': _client.auth.currentSession?.accessToken ?? '',
+        'subscribe_to_conversation': 'true', // Explicit subscription to conversation
       },
     );
 
+    print('WebSocket: Connecting to conversation $conversationId for user ${currentUser.id}');
     _wsChannel = WebSocketChannel.connect(wsUrl);
 
     // Send authentication message upon connection
-    _wsChannel!.sink.add(jsonEncode({
+    final authMessage = {
       'type': 'auth',
       'user_id': currentUser.id,
       'conversation_id': conversationId,
       'token': _client.auth.currentSession?.accessToken,
-    }));
+      'subscribe_to_messages': true, // Subscribe to all messages in this conversation
+      'subscribe_to_typing': true, // Subscribe to typing indicators
+    };
+
+    print('WebSocket: Sending auth message: ${authMessage.toString()}');
+    _wsChannel!.sink.add(jsonEncode(authMessage));
+
+    // Listen for connection success
+    _wsChannel!.ready.then((_) {
+      print('WebSocket: Connected successfully to conversation $conversationId');
+    }).catchError((error) {
+      print('WebSocket: Connection failed: $error');
+    });
 
     // Listen to incoming messages
     _wsChannel!.stream.listen(
@@ -106,6 +120,9 @@ class MessageNotifier extends _$MessageNotifier {
               if (messageData != null && messageData is Map) {
                 try {
                   final newMessage = MessageModel.fromJson(messageData as Map<String, dynamic>);
+                  print('WebSocket: Received message from ${newMessage.senderId} to ${newMessage.receiverId} in conversation ${newMessage.conversationId}');
+
+                  // Always add the message - this will work for both sender and receiver
                   addMessage(newMessage);
                 } catch (e) {
                   print('Error parsing message data: $messageData, error: $e');
@@ -197,6 +214,20 @@ class MessageNotifier extends _$MessageNotifier {
                 print('WebSocket authentication response: $messageData');
               } else {
                 print('WebSocket authentication response: null - connection established');
+              }
+              break;
+
+            case 'message_received':
+              // Handle message received confirmation
+              if (messageData != null && messageData is Map) {
+                print('WebSocket: Message received confirmation: $messageData');
+              }
+              break;
+
+            case 'conversation_joined':
+              // Handle conversation joined notification
+              if (messageData != null && messageData is Map) {
+                print('WebSocket: Joined conversation: $messageData');
               }
               break;
 
