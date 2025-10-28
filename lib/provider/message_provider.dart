@@ -18,6 +18,7 @@ class MessageNotifier extends _$MessageNotifier {
   static const int _maxReconnectAttempts = 5;
   static const int _baseReconnectDelay = 2000; // 2 seconds
   static const Duration _pingInterval = Duration(minutes: 1); // Keep-alive ping
+  int? _currentConversationId; // Track current conversation for debugging
 
   @override
   AsyncValue<List<MessageModel>> build() {
@@ -35,6 +36,9 @@ class MessageNotifier extends _$MessageNotifier {
 
     // Reset reconnection state on successful connection
     _resetReconnectionState();
+
+    // Track current conversation for debugging
+    _currentConversationId = conversationId;
 
     // Start ping timer for connection keep-alive
     _startPingTimer();
@@ -81,9 +85,11 @@ class MessageNotifier extends _$MessageNotifier {
     // Listen to incoming messages
     _wsChannel!.stream.listen(
       (message) {
+        print('WebSocket: Raw message received: ${message.length > 100 ? message.substring(0, 100) + "..." : message}');
+
         try {
           if (message.isEmpty || message.trim().isEmpty) {
-            print('Received empty WebSocket message, ignoring');
+            print('WebSocket: Received empty message, ignoring');
             return;
           }
 
@@ -91,18 +97,18 @@ class MessageNotifier extends _$MessageNotifier {
           try {
             decodedMessage = jsonDecode(message);
           } catch (e) {
-            print('Failed to decode JSON message: $message, error: $e');
+            print('WebSocket: Failed to decode JSON message: $message, error: $e');
             return;
           }
 
           // Validate message structure
           if (decodedMessage == null) {
-            print('Received null WebSocket message, ignoring');
+            print('WebSocket: Received null message, ignoring');
             return;
           }
 
           if (decodedMessage is! Map) {
-            print('Received non-map WebSocket message: $decodedMessage, type: ${decodedMessage.runtimeType}');
+            print('WebSocket: Received non-map message: $decodedMessage, type: ${decodedMessage.runtimeType}');
             return;
           }
 
@@ -110,9 +116,11 @@ class MessageNotifier extends _$MessageNotifier {
           final messageData = decodedMessage['data'];
 
           if (messageType == null) {
-            print('Received WebSocket message without type: $decodedMessage');
+            print('WebSocket: Received message without type: $decodedMessage');
             return;
           }
+
+          print('WebSocket: Processing message type: $messageType');
 
           // Handle different message types with proper validation
           switch (messageType) {
@@ -120,15 +128,16 @@ class MessageNotifier extends _$MessageNotifier {
               if (messageData != null && messageData is Map) {
                 try {
                   final newMessage = MessageModel.fromJson(messageData as Map<String, dynamic>);
-                  print('WebSocket: Received message from ${newMessage.senderId} to ${newMessage.receiverId} in conversation ${newMessage.conversationId}');
+                  print('WebSocket: 📨 Received message from ${newMessage.senderId} to ${newMessage.receiverId} in conversation ${newMessage.conversationId}');
 
                   // Always add the message - this will work for both sender and receiver
                   addMessage(newMessage);
+                  print('WebSocket: ✅ Message added to UI: ${newMessage.content?.substring(0, 50)}');
                 } catch (e) {
-                  print('Error parsing message data: $messageData, error: $e');
+                  print('WebSocket: ❌ Error parsing message data: $messageData, error: $e');
                 }
               } else {
-                print('Received message with invalid data: $messageData');
+                print('WebSocket: ⚠️ Received message with invalid data: $messageData');
               }
               break;
 
@@ -382,12 +391,19 @@ class MessageNotifier extends _$MessageNotifier {
     _pingTimer = Timer.periodic(_pingInterval, (_) {
       if (_wsChannel != null) {
         try {
-          _wsChannel!.sink.add(jsonEncode({
+          final pingMessage = {
             'type': 'ping',
             'timestamp': DateTime.now().toIso8601String(),
-          }));
+            'conversation_id': _currentConversationId,
+          };
+          _wsChannel!.sink.add(jsonEncode(pingMessage));
+          print('WebSocket: 💓 Sent ping to maintain connection');
         } catch (e) {
-          print('Error sending ping message: $e');
+          print('WebSocket: ❌ Error sending ping message: $e');
+          // Try to reconnect on ping failure
+          if (_currentConversationId != null) {
+            _connectWebSocket(_currentConversationId!);
+          }
         }
       }
     });
