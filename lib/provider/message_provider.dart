@@ -26,9 +26,7 @@ class MessageNotifier extends _$MessageNotifier {
 
     // Connect to the WebSocket server
     _wsChannel = WebSocketChannel.connect(
-      Uri.parse(
-        'wss://desirable-moira-kfa-f246aea1.koyeb.app/ws?conversationId=$conversationId',
-      ),
+      Uri.parse('wss://desirable-moira-kfa-f246aea1.koyeb.app'),
     );
 
     // Listen to incoming messages
@@ -277,9 +275,7 @@ class MessageNotifier extends _$MessageNotifier {
     }
   }
 
-  Future<MessageModel?> getLastMessage({
-    required int conversationId,
-  }) async {
+  Future<MessageModel?> getLastMessage({required int conversationId}) async {
     try {
       final response = await _client
           .from('messages')
