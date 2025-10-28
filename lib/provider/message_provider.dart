@@ -172,8 +172,8 @@ class MessageNotifier extends _$MessageNotifier {
                 print('WebSocket: ⌨️ Typing indicator received: $messageData');
                 _handleTypingIndicator(messageData as Map<String, dynamic>);
               } else if (messageData == null) {
-                // Handle null data silently - server might send empty typing updates
-                print('WebSocket: ⌨️ Typing indicator with null data - ignoring');
+                // Handle null data - might be just a typing indicator without data
+                print('WebSocket: ⌨️ Typing indicator received (no data)');
               } else {
                 print('WebSocket: ⚠️ Typing indicator with invalid data type: ${messageData.runtimeType}, data: $messageData');
               }
@@ -273,21 +273,25 @@ class MessageNotifier extends _$MessageNotifier {
 
   void _handleTypingIndicator(Map<String, dynamic> data) {
     try {
-      final userId = data['user_id'] as String?;
-      final isTyping = data['is_typing'] as bool?;
+      // Your server sends: {"type":"typing","username":null,"timestamp":"2025-10-28T09:42:52.300Z"}
+      final username = data['username'] as String?;
+      final timestamp = data['timestamp'] as String?;
 
-      if (userId != null && isTyping != null) {
-        print('Typing indicator: User $userId is ${isTyping ? "typing" : "not typing"}');
+      if (username != null && username.isNotEmpty) {
+        print('⌨️ Typing indicator: User $username is typing (timestamp: $timestamp)');
 
         // You could use this to show typing indicators in the UI
-        // For example: _updateTypingStatus(userId, isTyping);
+        // For example: _updateTypingStatus(username, true);
 
         // If you want to implement typing indicators, you could:
         // 1. Store typing status in a state management system
-        // 2. Update the UI to show "User is typing..."
+        // 2. Update the UI to show "$username is typing..."
         // 3. Clear typing status after a timeout
       } else {
-        print('Invalid typing indicator data: $data');
+        // Handle case where username is null (server might send typing start/stop)
+        print('⌨️ Typing indicator received (no username) - timestamp: $timestamp');
+
+        // Could interpret this as "someone is typing" or generic typing indicator
       }
     } catch (e) {
       print('Error handling typing indicator: $e, data: $data');
