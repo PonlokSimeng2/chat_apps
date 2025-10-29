@@ -1,7 +1,7 @@
 import 'dart:typed_data';
-import 'package:chat_app/model/user_model.dart';
-import 'package:chat_app/provider/auth_provider.dart';
-import 'package:chat_app/provider/supabase_provider.dart';
+import 'package:chat_apps/model/user_model.dart';
+import 'package:chat_apps/provider/auth_provider.dart';
+import 'package:chat_apps/provider/supabase_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 part 'user_provider.g.dart';

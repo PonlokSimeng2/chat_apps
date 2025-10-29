@@ -1,7 +1,7 @@
-import 'package:chat_app/model/user_model.dart';
-import 'package:chat_app/model/message_model.dart';
-import 'package:chat_app/provider/message_provider.dart';
-import 'package:chat_app/page/chat_screen.dart';
+import 'package:chat_apps/model/user_model.dart';
+import 'package:chat_apps/model/message_model.dart';
+import 'package:chat_apps/provider/message_provider.dart';
+import 'package:chat_apps/page/chat_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

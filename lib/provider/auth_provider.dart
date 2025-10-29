@@ -1,5 +1,5 @@
 import 'dart:developer';
-import 'package:chat_app/provider/supabase_provider.dart';
+import 'package:chat_apps/provider/supabase_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 

@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:chat_app/model/message_model.dart';
-import 'package:chat_app/model/message_status.dart';
-import 'package:chat_app/provider/message_provider.dart';
+import '../model/message_model.dart';
+import '../model/message_status.dart';
+import '../provider/message_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

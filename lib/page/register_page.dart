@@ -1,5 +1,5 @@
-import 'package:chat_app/page/chat_home_page.dart';
-import 'package:chat_app/provider/auth_provider.dart';
+import 'package:chat_apps/page/chat_home_page.dart';
+import 'package:chat_apps/provider/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

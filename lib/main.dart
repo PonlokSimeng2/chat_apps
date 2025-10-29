@@ -1,7 +1,7 @@
-import 'package:chat_app/page/chat_home_page.dart';
-import 'package:chat_app/page/login_page.dart';
-import 'package:chat_app/provider/cache_provider.dart';
-import 'package:chat_app/provider/supabase_provider.dart';
+import 'package:chat_apps/page/chat_home_page.dart';
+import 'package:chat_apps/page/login_page.dart';
+import 'package:chat_apps/provider/cache_provider.dart';
+import 'package:chat_apps/provider/supabase_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
