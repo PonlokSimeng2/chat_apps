@@ -62,7 +62,8 @@ class MessageNotifier extends _$MessageNotifier {
       },
     );
 
-    print('WebSocket: Connecting to conversation $conversationId for user ${currentUser.id}');
+    print('WebSocket: 🔌 Connecting to conversation $conversationId for user ${currentUser.id} with receiver $receiverId');
+    print('WebSocket: 📡 Full WebSocket URL: $wsUrl');
     _wsChannel = WebSocketChannel.connect(wsUrl);
 
     // Send authentication message upon connection
@@ -574,10 +575,12 @@ class MessageNotifier extends _$MessageNotifier {
       );
 
       // 5. Send the persisted message over WebSocket
-      _wsChannel?.sink.add(jsonEncode({
+      final wsMessage = {
         'type': 'message',
         'data': response,
-      }));
+      };
+      print('WebSocket: 📤 Sending message to server: ${jsonEncode(wsMessage)}');
+      _wsChannel?.sink.add(jsonEncode(wsMessage));
 
       // 6. Replace temporary message with permanent one
       addMessage(permanentMessage);
