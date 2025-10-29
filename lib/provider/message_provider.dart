@@ -19,6 +19,7 @@ class MessageNotifier extends _$MessageNotifier {
   static const int _baseReconnectDelay = 2000; // 2 seconds
   static const Duration _pingInterval = Duration(minutes: 1); // Keep-alive ping
   int? _currentConversationId; // Track current conversation for debugging
+  String? _currentReceiverId; // Track current receiver for WebSocket connection
 
   @override
   AsyncValue<List<MessageModel>> build() {
@@ -30,15 +31,16 @@ class MessageNotifier extends _$MessageNotifier {
     return const AsyncValue.data([]);
   }
 
-  void _connectWebSocket(int conversationId) {
+  void _connectWebSocket(int conversationId, String receiverId) {
     // Close any existing channel
     _wsChannel?.sink.close();
 
     // Reset reconnection state on successful connection
     _resetReconnectionState();
 
-    // Track current conversation for debugging
+    // Track current conversation and receiver for debugging and reconnection
     _currentConversationId = conversationId;
+    _currentReceiverId = receiverId;
 
     // Start ping timer for connection keep-alive
     _startPingTimer();
@@ -54,6 +56,7 @@ class MessageNotifier extends _$MessageNotifier {
       queryParameters: {
         'conversation_id': conversationId.toString(),
         'user_id': currentUser.id,
+        'receiver_id': receiverId,
         'token': _client.auth.currentSession?.accessToken ?? '',
         'subscribe_to_conversation': 'true', // Explicit subscription to conversation
       },
@@ -368,7 +371,7 @@ class MessageNotifier extends _$MessageNotifier {
       _reconnectAttempts++;
       if (state.value != null) { // Only reconnect if we have messages loaded
         print('Attempting to reconnect...');
-        _connectWebSocket(conversationId);
+        _connectWebSocket(conversationId, _currentReceiverId!);
       }
     });
   }
@@ -406,8 +409,8 @@ class MessageNotifier extends _$MessageNotifier {
         } catch (e) {
           print('WebSocket: ❌ Error sending ping message: $e');
           // Try to reconnect on ping failure
-          if (_currentConversationId != null) {
-            _connectWebSocket(_currentConversationId!);
+          if (_currentConversationId != null && _currentReceiverId != null) {
+            _connectWebSocket(_currentConversationId!, _currentReceiverId!);
           }
         }
       }
@@ -437,7 +440,32 @@ class MessageNotifier extends _$MessageNotifier {
       state = AsyncValue.data(messages);
 
       // Setup WebSocket connection
-      _connectWebSocket(conversationId);
+      _connectWebSocket(conversationId, _currentReceiverId!);
+    } catch (e, stack) {
+      state = AsyncValue.error(e, stack);
+    }
+  }
+
+  // Public method to load messages and establish WebSocket connection with receiver context
+  Future<void> loadMessagesWithReceiver(int conversationId, String receiverId) async {
+    state = const AsyncValue.loading();
+
+    try {
+      final response = await _client
+          .from('messages')
+          .select()
+          .eq('conversation_id', conversationId)
+          .eq('is_deleted', false)
+          .order('created_at', ascending: true);
+
+      final messages = (response as List)
+          .map((json) => MessageModel.fromJson(json))
+          .toList();
+
+      state = AsyncValue.data(messages);
+
+      // Setup WebSocket connection with receiver context
+      _connectWebSocket(conversationId, receiverId);
     } catch (e, stack) {
       state = AsyncValue.error(e, stack);
     }

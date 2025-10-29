@@ -38,7 +38,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     Future.microtask(
       () => ref
           .read(messageNotifierProvider.notifier)
-          .loadMessages(widget.conversationId),
+          .loadMessagesWithReceiver(widget.conversationId, widget.receiverId),
     );
   }
 
@@ -55,6 +55,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       );
     }
 
+    // Send message with proper authentication context for WebSocket
     ref
         .read(messageNotifierProvider.notifier)
         .sendMessage(
