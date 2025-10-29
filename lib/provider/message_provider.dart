@@ -123,13 +123,15 @@ class MessageNotifier extends _$MessageNotifier {
             return;
           }
 
-        //  print('WebSocketssss: Processing message type: $messageType');
+        print('WebSocket: Processing message type: $messageType');
+        print('WebSocket: Full message structure: ${decodedMessage.toString()}');
 
           // Handle different message types with proper validation
           switch (messageType) {
             case 'message':
               if (messageData != null && messageData is Map) {
                 try {
+                  print('WebSocket: 📨 Attempting to parse message data: $messageData');
                   final newMessage = MessageModel.fromJson(messageData as Map<String, dynamic>);
                   print('WebSocket: 📨 Received message from ${newMessage.senderId} to ${newMessage.receiverId} in conversation ${newMessage.conversationId}');
 
@@ -138,7 +140,13 @@ class MessageNotifier extends _$MessageNotifier {
                   print('WebSocket: ✅ Message added to UI: ${newMessage.content?.substring(0, 50)}');
                 } catch (e) {
                   print('WebSocket: ❌ Error parsing message data: $messageData, error: $e');
+                  // Try to handle messages in a different format
+                  _handleAlternativeMessageFormat(Map<String, dynamic>.from(messageData));
                 }
+              } else if (messageData == null && decodedMessage['content'] != null) {
+                // Handle case where message content is at root level (common in simple chat servers)
+                print('WebSocket: 📨 Received message at root level: $decodedMessage');
+                _handleSimpleMessage(Map<String, dynamic>.from(decodedMessage));
               } else {
                 print('WebSocket: ⚠️ Received message with invalid data: $messageData');
               }
@@ -753,6 +761,55 @@ class MessageNotifier extends _$MessageNotifier {
         'timestamp': DateTime.now().toIso8601String(),
       },
     }));
+  }
+
+  // Handle alternative message formats from different servers
+  void _handleAlternativeMessageFormat(Map<String, dynamic> messageData) {
+    try {
+      print('WebSocket: 🔧 Attempting to handle alternative message format: $messageData');
+
+      // Try to create a MessageModel from available data
+      final message = MessageModel(
+        id: messageData['id'] as int?,
+        conversationId: _currentConversationId ?? 1,
+        senderId: messageData['senderId']?.toString() ?? messageData['user_id']?.toString() ?? 'unknown',
+        receiverId: messageData['receiverId']?.toString() ?? messageData['target_user_id']?.toString() ?? _currentReceiverId ?? 'unknown',
+        content: messageData['content']?.toString() ?? messageData['message']?.toString() ?? 'No content',
+        createdAt: messageData['timestamp'] != null
+            ? DateTime.parse(messageData['timestamp'].toString())
+            : DateTime.now(),
+        status: MessageStatus.sent,
+      );
+
+      addMessage(message);
+      print('WebSocket: ✅ Alternative format message added to UI');
+    } catch (e) {
+      print('WebSocket: ❌ Failed to handle alternative message format: $e');
+    }
+  }
+
+  // Handle simple message format (content at root level)
+  void _handleSimpleMessage(Map<String, dynamic> decodedMessage) {
+    try {
+      print('WebSocket: 🔧 Handling simple message format: $decodedMessage');
+
+      final message = MessageModel(
+        id: decodedMessage['id'] as int?,
+        conversationId: _currentConversationId ?? 1,
+        senderId: decodedMessage['user_id']?.toString() ?? decodedMessage['sender']?.toString() ?? 'unknown',
+        receiverId: _currentReceiverId ?? 'unknown',
+        content: decodedMessage['content']?.toString() ?? decodedMessage['message']?.toString() ?? 'No content',
+        createdAt: decodedMessage['timestamp'] != null
+            ? DateTime.parse(decodedMessage['timestamp'].toString())
+            : DateTime.now(),
+        status: MessageStatus.sent,
+      );
+
+      addMessage(message);
+      print('WebSocket: ✅ Simple format message added to UI');
+    } catch (e) {
+      print('WebSocket: ❌ Failed to handle simple message format: $e');
+    }
   }
 
   // Clear all messages (useful when logging out)

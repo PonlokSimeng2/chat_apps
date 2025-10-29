@@ -41,7 +41,7 @@ final webSocketStatusProvider = AutoDisposeProvider<WebSocketStatus>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef WebSocketStatusRef = AutoDisposeProviderRef<WebSocketStatus>;
-String _$webSocketNotifierHash() => r'c5fc2d26c927e28d6ba137b09d9a1a4d21cddfe0';
+String _$webSocketNotifierHash() => r'9a5b4da213cedb70501d5aa63bb5214072f53e8e';
 
 /// See also [WebSocketNotifier].
 @ProviderFor(WebSocketNotifier)
