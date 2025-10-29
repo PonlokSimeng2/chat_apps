@@ -264,7 +264,12 @@ class MessageNotifier extends _$MessageNotifier {
               break;
 
             default:
-              print('Unknown message type: $messageType, data: $messageData');
+              print('WebSocket: ❓ Unknown message type: $messageType, data: $messageData');
+              // Try to handle this as a potential message that wasn't properly classified
+              if (decodedMessage['content'] != null || decodedMessage['message'] != null) {
+                print('WebSocket: 🔄 Treating unknown message as chat message');
+                _handleSimpleMessage(Map<String, dynamic>.from(decodedMessage));
+              }
           }
         } catch (e, stackTrace) {
           print('Error handling WebSocket message: $e\nStack trace: $stackTrace');
