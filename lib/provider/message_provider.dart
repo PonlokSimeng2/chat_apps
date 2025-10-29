@@ -52,7 +52,7 @@ class MessageNotifier extends _$MessageNotifier {
     }
 
     // Connect to the WebSocket server with authentication and conversation context
-    final wsUrl = Uri.parse('wss://desirable-moira-kfa-f246aea1.koyeb.app').replace(
+    final wsUrl = Uri.parse('wss://communist-alexi-kfa-8f51d6f6.koyeb.app/chat').replace(
       queryParameters: {
         'conversation_id': conversationId.toString(),
         'user_id': currentUser.id,
@@ -88,11 +88,11 @@ class MessageNotifier extends _$MessageNotifier {
     // Listen to incoming messages
     _wsChannel!.stream.listen(
       (message) {
-        print('WebSocket: Raw message received: ${message.length > 100 ? message.substring(0, 100) + "..." : message}');
+      //  print('WebSocketsssssss: Raw message received: ${message.length > 100 ? message.substring(0, 100) + "..." : message}');
 
         try {
           if (message.isEmpty || message.trim().isEmpty) {
-            print('WebSocket: Received empty message, ignoring');
+      //     print('WebSocketsssssss: Received empty message, ignoring');
             return;
           }
 
@@ -119,11 +119,11 @@ class MessageNotifier extends _$MessageNotifier {
           final messageData = decodedMessage['data'];
 
           if (messageType == null) {
-            print('WebSocket: Received message without type: $decodedMessage');
+         //   print('WebSocketssss: Received message without type: $decodedMessage');
             return;
           }
 
-          print('WebSocket: Processing message type: $messageType');
+        //  print('WebSocketssss: Processing message type: $messageType');
 
           // Handle different message types with proper validation
           switch (messageType) {
@@ -172,11 +172,11 @@ class MessageNotifier extends _$MessageNotifier {
 
             case 'typing':
               if (messageData != null && messageData is Map) {
-                print('WebSocket: ⌨️ Typing indicator received: $messageData');
+                print('WebSocketsss: ⌨️ Typing indicator received: $messageData');
                 _handleTypingIndicator(messageData as Map<String, dynamic>);
               } else if (messageData == null) {
                 // Handle null data - might be just a typing indicator without data
-                print('WebSocket: ⌨️ Typing indicator received (no data)');
+                print('WebSocketssss: ⌨️ Typing indicator received (no data)');
               } else {
                 print('WebSocket: ⚠️ Typing indicator with invalid data type: ${messageData.runtimeType}, data: $messageData');
               }
@@ -292,7 +292,7 @@ class MessageNotifier extends _$MessageNotifier {
         // 3. Clear typing status after a timeout
       } else {
         // Handle case where username is null (server might send typing start/stop)
-        print('⌨️ Typing indicator received (no username) - timestamp: $timestamp');
+       // print('⌨️ Typing indicator received (no username) - timestamp: $timestamp');
 
         // Could interpret this as "someone is typing" or generic typing indicator
       }

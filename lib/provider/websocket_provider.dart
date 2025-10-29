@@ -27,7 +27,7 @@ class WebSocketNotifier extends _$WebSocketNotifier {
   static const int _maxReconnectAttempts = 5;
   static const Duration _reconnectDelay = Duration(seconds: 3);
   static const Duration _heartbeatInterval = Duration(seconds: 30);
-  static const String _defaultServerUrl = 'https://desirable-moira-kfa-f246aea1.koyeb.app';
+  static const String _defaultServerUrl = 'https://communist-alexi-kfa-8f51d6f6.koyeb.app';
 
   @override
   AsyncValue<WebSocketConnectionState> build() {
@@ -60,7 +60,7 @@ class WebSocketNotifier extends _$WebSocketNotifier {
       ));
 
       // Use wss:// for secure WebSocket connection
-      final wsUrl = Uri.parse('${_currentServerUrl}/ws?userId=$userId&token=$token');
+      final wsUrl = Uri.parse('${_currentServerUrl}/chat?userId=$userId&token=$token');
       print('🔌 Connecting to WebSocket: $wsUrl');
 
       _channel = WebSocketChannel.connect(wsUrl);
