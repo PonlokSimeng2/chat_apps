@@ -172,11 +172,11 @@ class MessageNotifier extends _$MessageNotifier {
 
             case 'typing':
               if (messageData != null && messageData is Map) {
-                print('WebSocketsss: ⌨️ Typing indicator received: $messageData');
+                print('WebSocket: ⌨️ Typing indicator received: $messageData');
                 _handleTypingIndicator(messageData as Map<String, dynamic>);
               } else if (messageData == null) {
                 // Handle null data - might be just a typing indicator without data
-                print('WebSocketssss: ⌨️ Typing indicator received (no data)');
+                print('WebSocket: ⚠️ Server sends typing indicators without data - ignoring');
               } else {
                 print('WebSocket: ⚠️ Typing indicator with invalid data type: ${messageData.runtimeType}, data: $messageData');
               }
@@ -203,8 +203,8 @@ class MessageNotifier extends _$MessageNotifier {
                 // Handle simple string system messages
                 _handleSystemMessage({'message': messageData});
               } else if (messageData == null) {
-                // Handle null data silently - server might send empty updates
-                // print('Received system message with null data - ignoring');
+                // Handle null data - server might send empty updates
+                print('WebSocket: 📢 System message received with null data');
               } else {
                 print('Received system message with invalid data type: ${messageData.runtimeType}, data: $messageData');
               }
