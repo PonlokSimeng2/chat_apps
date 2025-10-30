@@ -44,5 +44,25 @@ final getLastMessagesProvider =
 // ignore: unused_element
 typedef GetLastMessagesRef =
     AutoDisposeFutureProviderRef<Map<String, MessageModel>>;
+String _$getUnreadMessageCountsHash() =>
+    r'330ba272f969eea46a19bc7fdb9dc796ae5ed7cd';
+
+/// See also [getUnreadMessageCounts].
+@ProviderFor(getUnreadMessageCounts)
+final getUnreadMessageCountsProvider =
+    AutoDisposeFutureProvider<Map<String, int>>.internal(
+      getUnreadMessageCounts,
+      name: r'getUnreadMessageCountsProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$getUnreadMessageCountsHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef GetUnreadMessageCountsRef =
+    AutoDisposeFutureProviderRef<Map<String, int>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

@@ -6,26 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'dart:async';
 
 part 'chat_list_page.g.dart';
 
 final searchQueryProvider = StateProvider<String>((ref) => '');
-final newMessageAlertProvider = StateProvider<NewMessageAlert?>((ref) => null);
-
-class NewMessageAlert {
-  final String userName;
-  final String messageContent;
-  final DateTime timestamp;
-  final bool isNewConversation;
-
-  NewMessageAlert({
-    required this.userName,
-    required this.messageContent,
-    required this.timestamp,
-    this.isNewConversation = false,
-  });
-}
 
 // Provider to get users who have conversations with current user
 @riverpod
@@ -111,6 +95,37 @@ Future<Map<String, MessageModel>> getLastMessages(GetLastMessagesRef ref) async 
   }
 }
 
+// Provider to get unread message counts for each conversation
+@riverpod
+Future<Map<String, int>> getUnreadMessageCounts(Ref ref) async {
+  final supabase = Supabase.instance.client;
+  final currentUserId = supabase.auth.currentUser?.id;
+  if (currentUserId == null) return {};
+
+  try {
+    // Get unread messages (sent to current user, not read)
+    final response = await supabase
+        .from('messages')
+        .select()
+        .eq('receiver_id', currentUserId)
+        .neq('is_deleted', true)
+        .filter('read_at', 'is', null);
+
+    final Map<String, int> unreadCounts = {};
+
+    for (final messageData in response as List) {
+      final message = MessageModel.fromJson(messageData);
+      final conversationKey = _getConversationKey(currentUserId, message.senderId, message.receiverId);
+      unreadCounts[conversationKey] = (unreadCounts[conversationKey] ?? 0) + 1;
+    }
+
+    return unreadCounts;
+  } catch (e) {
+    // Error handling without print in production
+    return {};
+  }
+}
+
 // Helper function to create a unique conversation key
 String _getConversationKey(String currentUserId, String senderId, String receiverId) {
   final users = [senderId, receiverId]..sort();
@@ -125,174 +140,24 @@ class ChatListScreen extends ConsumerStatefulWidget {
 }
 
 class _ChatListScreenState extends ConsumerState<ChatListScreen> {
-  Timer? _alertTimer;
-  Timer? _pollingTimer;
-  final Set<String> _seenMessages = {};
-
   @override
   void initState() {
     super.initState();
-    // Start periodic polling for new messages
-    _startMessagePolling();
   }
 
   @override
   void dispose() {
-    _alertTimer?.cancel();
-    _pollingTimer?.cancel();
     super.dispose();
-  }
-
-  void _startMessagePolling() {
-    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      _checkForNewMessages();
-    });
-  }
-
-  void _checkForNewMessages() {
-    final lastMessages = ref.read(getLastMessagesProvider);
-    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-
-    if (lastMessages.value == null || currentUserId == null) return;
-
-    final now = DateTime.now();
-
-    for (final entry in lastMessages.value!.entries) {
-      final message = entry.value;
-      final messageKey = '${message.id}_${message.createdAt?.millisecondsSinceEpoch ?? 0}';
-
-      // Check if message is new and from another user
-      if (message.senderId != currentUserId &&
-          !_seenMessages.contains(messageKey) &&
-          message.createdAt != null &&
-          now.difference(message.createdAt!).inMinutes < 1) {
-
-        _seenMessages.add(messageKey);
-        _showNewMessageAlert(message);
-
-        // Auto-dismiss alert after 5 seconds
-        _alertTimer?.cancel();
-        _alertTimer = Timer(const Duration(seconds: 5), () {
-          ref.read(newMessageAlertProvider.notifier).state = null;
-        });
-      }
-    }
-  }
-
-  void _showNewMessageAlert(MessageModel message) {
-    // Create a user-friendly alert
-    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-    final isFromCurrentUser = message.senderId == currentUserId;
-    final userName = isFromCurrentUser ? 'You' : 'New message';
-    final messageContent = isFromCurrentUser
-        ? 'You: ${message.content ?? 'sent a message'}'
-        : message.content ?? 'sent you a message';
-
-    final alert = NewMessageAlert(
-      userName: userName,
-      messageContent: messageContent,
-      timestamp: message.createdAt ?? DateTime.now(),
-      isNewConversation: false,
-    );
-
-    ref.read(newMessageAlertProvider.notifier).state = alert;
-  }
-
-  Widget _buildNewMessageAlert(NewMessageAlert alert) {
-    return Dismissible(
-      key: Key('alert_${alert.timestamp.millisecondsSinceEpoch}'),
-      direction: DismissDirection.up,
-      onDismissed: (_) {
-        ref.read(newMessageAlertProvider.notifier).state = null;
-        _alertTimer?.cancel();
-      },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0D7FF2),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Icon(
-                Icons.notifications_active,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    alert.userName,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    alert.messageContent,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            Text(
-              _formatAlertTime(alert.timestamp),
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 11,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _formatAlertTime(DateTime time) {
-    final now = DateTime.now();
-    final difference = now.difference(time);
-
-    if (difference.inSeconds < 60) {
-      return 'now';
-    } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes}m';
-    } else {
-      return '${difference.inHours}h';
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     final getConversationUsers = ref.watch(getConversationUsersProvider);
     final getLastMessages = ref.watch(getLastMessagesProvider);
+    final getUnreadMessageCounts = ref.watch(getUnreadMessageCountsProvider);
     final searchQuery = ref.watch(searchQueryProvider);
     final currentUser = ref.watch(currentUserProvider);
-    final newMessageAlert = ref.watch(newMessageAlertProvider);
+   // final newMessageAlert = ref.watch(newMessageAlertProvider);
 
     return Stack(
       children: [
@@ -419,11 +284,13 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                                     user.id!,
                                   );
                                   final lastMessage = lastMessages[conversationKey];
+                                  final unreadCount = getUnreadMessageCounts.value?[conversationKey] ?? 0;
 
                                   return ConversationTile(
                                     user: user,
                                     lastMessage: lastMessage,
                                     currentUserId: currentUserId!,
+                                    unreadCount: unreadCount,
                                     onTap: () async {
                                       final conversationId = await ref.read(
                                         createOrGetPrivateConversationProvider(user.id!).future,
@@ -503,13 +370,6 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
           ],
         ),
         // New Message Alert Overlay
-        if (newMessageAlert != null)
-          Positioned(
-            top: 60,
-            left: 16,
-            right: 16,
-            child: _buildNewMessageAlert(newMessageAlert!),
-          ),
       ],
     );
   }
@@ -520,6 +380,7 @@ class ConversationTile extends StatelessWidget {
   final UserModel user;
   final MessageModel? lastMessage;
   final String currentUserId;
+  final int unreadCount;
   final VoidCallback onTap;
 
   const ConversationTile({
@@ -527,22 +388,28 @@ class ConversationTile extends StatelessWidget {
     required this.user,
     this.lastMessage,
     required this.currentUserId,
+    this.unreadCount = 0,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final hasUnreadMessages = unreadCount > 0;
+
     return InkWell(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E293B),
+          color: hasUnreadMessages ? const Color(0xFF1E3A5A) : const Color(0xFF1E293B),
           borderRadius: BorderRadius.circular(8),
+          border: hasUnreadMessages
+              ? Border.all(color: const Color(0xFF0D7FF2), width: 1)
+              : null,
         ),
         child: Row(
           children: [
-            // Avatar with online indicator
+            // Avatar with online indicator and unread badge
             Stack(
               children: [
                 Container(
@@ -578,6 +445,36 @@ class ConversationTile extends StatelessWidget {
                     ),
                   ),
                 ),
+                // Unread count badge
+                if (hasUnreadMessages)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      constraints: const BoxConstraints(
+                        minWidth: 22,
+                        minHeight: 22,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0D7FF2),
+                        borderRadius: BorderRadius.circular(11),
+                        border: Border.all(
+                          color: const Color(0xFF111827),
+                          width: 2,
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          unreadCount > 99 ? '99+' : unreadCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
 
@@ -593,10 +490,10 @@ class ConversationTile extends StatelessWidget {
                       Expanded(
                         child: Text(
                           user.displayName,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: hasUnreadMessages ? Colors.white : const Color(0xFFD1D5DB),
                             fontSize: 16,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: hasUnreadMessages ? FontWeight.w600 : FontWeight.w500,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -605,9 +502,10 @@ class ConversationTile extends StatelessWidget {
                       if (lastMessage?.createdAt != null)
                         Text(
                           _formatMessageTime(lastMessage!.createdAt!),
-                          style: const TextStyle(
-                            color: Color(0xFF0D7FF2),
+                          style: TextStyle(
+                            color: hasUnreadMessages ? const Color(0xFF0D7FF2) : const Color(0xFF9CA3AF),
                             fontSize: 12,
+                            fontWeight: hasUnreadMessages ? FontWeight.w500 : FontWeight.normal,
                           ),
                         ),
                     ],
@@ -618,9 +516,10 @@ class ConversationTile extends StatelessWidget {
                       Expanded(
                         child: Text(
                           _getLastMessageText(),
-                          style: const TextStyle(
-                            color: Color(0xFFD1D5DB),
+                          style: TextStyle(
+                            color: hasUnreadMessages ? Colors.white : const Color(0xFF9CA3AF),
                             fontSize: 14,
+                            fontWeight: hasUnreadMessages ? FontWeight.w500 : FontWeight.normal,
                           ),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
