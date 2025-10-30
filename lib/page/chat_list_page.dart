@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:chat_apps/page/chat_screen.dart';
 import 'package:chat_apps/provider/user_provider.dart';
 import 'package:chat_apps/model/user_model.dart';
@@ -54,15 +55,102 @@ Future<List<UserModel>> getConversationUsers(Ref ref) async {
   }
 }
 
-// Provider to get the last message for each conversation
+// Provider to get the last message for each conversation with real-time updates
 @riverpod
-Future<Map<String, MessageModel>> getLastMessages(Ref ref) async {
+Stream<Map<String, MessageModel>> getLastMessages(Ref ref) async* {
   final supabase = Supabase.instance.client;
   final currentUserId = supabase.auth.currentUser?.id;
-  if (currentUserId == null) return {};
+  if (currentUserId == null) {
+    yield {};
+    return;
+  }
 
+  // Create a stream controller to handle real-time updates
+  final streamController = StreamController<Map<String, MessageModel>>();
+
+  // Initial fetch
+  yield await _fetchLastMessages(supabase, currentUserId);
+
+  // Listen to real-time changes
+  final channel = supabase
+      .channel('last_messages_$currentUserId')
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'messages',
+        callback: (payload) async {
+          final newMessages = await _fetchLastMessages(supabase, currentUserId);
+          streamController.add(newMessages);
+        },
+      )
+      .subscribe();
+
+  // Listen to the stream controller for updates
+  await for (final messages in streamController.stream) {
+    yield messages;
+  }
+
+  // Cleanup
+  ref.onDispose(() {
+    supabase.removeChannel(channel);
+    streamController.close();
+  });
+}
+
+// Provider to get unread message counts for each conversation with real-time updates
+@riverpod
+Stream<Map<String, int>> getUnreadMessageCounts(Ref ref) async* {
+  final supabase = Supabase.instance.client;
+  final currentUserId = supabase.auth.currentUser?.id;
+  if (currentUserId == null) {
+    yield {};
+    return;
+  }
+
+  // Create a stream controller to handle real-time updates
+  final streamController = StreamController<Map<String, int>>();
+
+  // Initial fetch
+  yield await _fetchUnreadCounts(supabase, currentUserId);
+
+  // Listen to real-time changes
+  final channel = supabase
+      .channel('unread_counts_$currentUserId')
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'messages',
+        callback: (payload) async {
+          final newCounts = await _fetchUnreadCounts(supabase, currentUserId);
+          streamController.add(newCounts);
+        },
+      )
+      .subscribe();
+
+  // Listen to the stream controller for updates
+  await for (final counts in streamController.stream) {
+    yield counts;
+  }
+
+  // Cleanup
+  ref.onDispose(() {
+    supabase.removeChannel(channel);
+    streamController.close();
+  });
+}
+
+// Helper function to create a unique conversation key
+String _getConversationKey(String currentUserId, String senderId, String receiverId) {
+  final users = [senderId, receiverId]..sort();
+  return '${users[0]}_${users[1]}';
+}
+
+// Helper function to fetch last messages
+Future<Map<String, MessageModel>> _fetchLastMessages(
+  SupabaseClient supabase,
+  String currentUserId,
+) async {
   try {
-    // Get the most recent message from each conversation
     final response = await supabase
         .from('messages')
         .select('''
@@ -95,15 +183,12 @@ Future<Map<String, MessageModel>> getLastMessages(Ref ref) async {
   }
 }
 
-// Provider to get unread message counts for each conversation
-@riverpod
-Future<Map<String, int>> getUnreadMessageCounts(Ref ref) async {
-  final supabase = Supabase.instance.client;
-  final currentUserId = supabase.auth.currentUser?.id;
-  if (currentUserId == null) return {};
-
+// Helper function to fetch unread message counts
+Future<Map<String, int>> _fetchUnreadCounts(
+  SupabaseClient supabase,
+  String currentUserId,
+) async {
   try {
-    // Get unread messages (sent to current user, not read)
     final response = await supabase
         .from('messages')
         .select()
@@ -124,12 +209,6 @@ Future<Map<String, int>> getUnreadMessageCounts(Ref ref) async {
     // Error handling without print in production
     return {};
   }
-}
-
-// Helper function to create a unique conversation key
-String _getConversationKey(String currentUserId, String senderId, String receiverId) {
-  final users = [senderId, receiverId]..sort();
-  return '${users[0]}_${users[1]}';
 }
 
 class ChatListScreen extends ConsumerStatefulWidget {
@@ -248,43 +327,45 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                 data: (conversationUsers) {
                   return getLastMessages.when(
                     data: (lastMessages) {
-                      // Get users with conversations, filtered by search query
-                      final currentUserId = currentUserData?.id;
-                      final conversationUsersList = conversationUsers.where((user) {
-                        return user.displayName.toLowerCase().contains(
-                          searchQuery.toLowerCase(),
-                        );
-                      }).toList();
+                      return getUnreadMessageCounts.when(
+                        data: (unreadCounts) {
+                          // Get users with conversations, filtered by search query
+                          final currentUserId = currentUserData?.id;
+                          final conversationUsersList = conversationUsers.where((user) {
+                            return user.displayName.toLowerCase().contains(
+                              searchQuery.toLowerCase(),
+                            );
+                          }).toList();
 
-                      return CustomScrollView(
-                        slivers: [
-                          // Conversations Section
-                          if (conversationUsersList.isNotEmpty) ...[
-                            const SliverToBoxAdapter(
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                child: Text(
-                                  'CONVERSATIONS',
-                                  style: TextStyle(
-                                    color: Color(0xFF9CA3AF),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 1.0,
+                          return CustomScrollView(
+                            slivers: [
+                              // Conversations Section
+                              if (conversationUsersList.isNotEmpty) ...[
+                                const SliverToBoxAdapter(
+                                  child: Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    child: Text(
+                                      'CONVERSATIONS',
+                                      style: TextStyle(
+                                        color: Color(0xFF9CA3AF),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 1.0,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
-                            SliverList(
-                              delegate: SliverChildBuilderDelegate(
-                                (context, index) {
-                                  final user = conversationUsersList[index];
-                                  final conversationKey = _getConversationKey(
-                                    currentUserId!,
-                                    currentUserId!,
-                                    user.id!,
-                                  );
-                                  final lastMessage = lastMessages[conversationKey];
-                                  final unreadCount = getUnreadMessageCounts.value?[conversationKey] ?? 0;
+                                SliverList(
+                                  delegate: SliverChildBuilderDelegate(
+                                    (context, index) {
+                                      final user = conversationUsersList[index];
+                                      final conversationKey = _getConversationKey(
+                                        currentUserId!,
+                                        currentUserId!,
+                                        user.id!,
+                                      );
+                                      final lastMessage = lastMessages[conversationKey];
+                                      final unreadCount = unreadCounts[conversationKey] ?? 0;
 
                                   return ConversationTile(
                                     user: user,
@@ -358,6 +439,10 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                     loading: () => const Center(child: CircularProgressIndicator()),
                     error: (error, stackTrace) => Center(child: Text('Error: $error')),
                   );
+                        },
+                        loading: () => const Center(child: CircularProgressIndicator()),
+                        error: (error, stackTrace) => Center(child: Text('Error: $error')),
+                      );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, stackTrace) => Center(child: Text('Error: $error')),
