@@ -1,214 +1,17 @@
-import 'dart:async';
 import 'package:chat_apps/page/chat_screen.dart';
 import 'package:chat_apps/provider/user_provider.dart';
+import 'package:chat_apps/provider/message_provider.dart';
 import 'package:chat_apps/model/user_model.dart';
 import 'package:chat_apps/model/message_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
-part 'chat_list_page.g.dart';
 
 final searchQueryProvider = StateProvider<String>((ref) => '');
-
-// Provider to get users who have conversations with current user
-@riverpod
-Future<List<UserModel>> getConversationUsers(Ref ref) async {
-  final supabase = Supabase.instance.client;
-  final currentUserId = supabase.auth.currentUser?.id;
-  if (currentUserId == null) return [];
-
-  try {
-    // Get unique users that current user has sent messages to or received messages from
-    final response = await supabase
-        .from('messages')
-        .select('sender_id, receiver_id')
-        .or('sender_id.eq.$currentUserId,receiver_id.eq.$currentUserId')
-        .neq('is_deleted', true);
-
-    final Set<String> conversationUserIds = {};
-    for (final message in response as List) {
-      final senderId = message['sender_id'] as String?;
-      final receiverId = message['receiver_id'] as String?;
-
-      if (senderId != null && senderId != currentUserId) {
-        conversationUserIds.add(senderId);
-      }
-      if (receiverId != null && receiverId != currentUserId) {
-        conversationUserIds.add(receiverId);
-      }
-    }
-
-    if (conversationUserIds.isEmpty) return [];
-
-    // Get user details for these conversation users
-    final usersResponse = await supabase
-        .from('users')
-        .select()
-        .inFilter('id', conversationUserIds.toList());
-
-    return usersResponse.map((json) => UserModel.fromJson(json)).toList();
-  } catch (e) {
-    // Error handling without print in production
-    return [];
-  }
-}
-
-// Provider to get the last message for each conversation with real-time updates
-@riverpod
-Stream<Map<String, MessageModel>> getLastMessages(Ref ref) async* {
-  final supabase = Supabase.instance.client;
-  final currentUserId = supabase.auth.currentUser?.id;
-  if (currentUserId == null) {
-    yield {};
-    return;
-  }
-
-  // Create a stream controller to handle real-time updates
-  final streamController = StreamController<Map<String, MessageModel>>();
-
-  // Initial fetch
-  yield await _fetchLastMessages(supabase, currentUserId);
-
-  // Listen to real-time changes
-  final channel = supabase
-      .channel('last_messages_$currentUserId')
-      .onPostgresChanges(
-        event: PostgresChangeEvent.all,
-        schema: 'public',
-        table: 'messages',
-        callback: (payload) async {
-          final newMessages = await _fetchLastMessages(supabase, currentUserId);
-          streamController.add(newMessages);
-        },
-      )
-      .subscribe();
-
-  // Listen to the stream controller for updates
-  await for (final messages in streamController.stream) {
-    yield messages;
-  }
-
-  // Cleanup
-  ref.onDispose(() {
-    supabase.removeChannel(channel);
-    streamController.close();
-  });
-}
-
-// Provider to get unread message counts for each conversation with real-time updates
-@riverpod
-Stream<Map<String, int>> getUnreadMessageCounts(Ref ref) async* {
-  final supabase = Supabase.instance.client;
-  final currentUserId = supabase.auth.currentUser?.id;
-  if (currentUserId == null) {
-    yield {};
-    return;
-  }
-
-  // Create a stream controller to handle real-time updates
-  final streamController = StreamController<Map<String, int>>();
-
-  // Initial fetch
-  yield await _fetchUnreadCounts(supabase, currentUserId);
-
-  // Listen to real-time changes
-  final channel = supabase
-      .channel('unread_counts_$currentUserId')
-      .onPostgresChanges(
-        event: PostgresChangeEvent.all,
-        schema: 'public',
-        table: 'messages',
-        callback: (payload) async {
-          final newCounts = await _fetchUnreadCounts(supabase, currentUserId);
-          streamController.add(newCounts);
-        },
-      )
-      .subscribe();
-
-  // Listen to the stream controller for updates
-  await for (final counts in streamController.stream) {
-    yield counts;
-  }
-
-  // Cleanup
-  ref.onDispose(() {
-    supabase.removeChannel(channel);
-    streamController.close();
-  });
-}
 
 // Helper function to create a unique conversation key
 String _getConversationKey(String currentUserId, String senderId, String receiverId) {
   final users = [senderId, receiverId]..sort();
   return '${users[0]}_${users[1]}';
-}
-
-// Helper function to fetch last messages
-Future<Map<String, MessageModel>> _fetchLastMessages(
-  SupabaseClient supabase,
-  String currentUserId,
-) async {
-  try {
-    final response = await supabase
-        .from('messages')
-        .select('''
-          *,
-          conversations!inner(
-            name
-          )
-        ''')
-        .or('sender_id.eq.$currentUserId,receiver_id.eq.$currentUserId')
-        .neq('is_deleted', true)
-        .order('created_at', ascending: false);
-
-    final Map<String, MessageModel> lastMessages = {};
-    final Set<String> processedConversations = {};
-
-    for (final messageData in response as List) {
-      final message = MessageModel.fromJson(messageData);
-      final conversationKey = _getConversationKey(currentUserId, message.senderId, message.receiverId);
-
-      if (!processedConversations.contains(conversationKey)) {
-        lastMessages[conversationKey] = message;
-        processedConversations.add(conversationKey);
-      }
-    }
-
-    return lastMessages;
-  } catch (e) {
-    // Error handling without print in production
-    return {};
-  }
-}
-
-// Helper function to fetch unread message counts
-Future<Map<String, int>> _fetchUnreadCounts(
-  SupabaseClient supabase,
-  String currentUserId,
-) async {
-  try {
-    final response = await supabase
-        .from('messages')
-        .select()
-        .eq('receiver_id', currentUserId)
-        .neq('is_deleted', true)
-        .filter('read_at', 'is', null);
-
-    final Map<String, int> unreadCounts = {};
-
-    for (final messageData in response as List) {
-      final message = MessageModel.fromJson(messageData);
-      final conversationKey = _getConversationKey(currentUserId, message.senderId, message.receiverId);
-      unreadCounts[conversationKey] = (unreadCounts[conversationKey] ?? 0) + 1;
-    }
-
-    return unreadCounts;
-  } catch (e) {
-    // Error handling without print in production
-    return {};
-  }
 }
 
 class ChatListScreen extends ConsumerStatefulWidget {
@@ -231,7 +34,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final getConversationUsers = ref.watch(getConversationUsersProvider);
+    final getConversationUsers = ref.watch(conversationUsersProvider);
     final getLastMessages = ref.watch(getLastMessagesProvider);
     final getUnreadMessageCounts = ref.watch(getUnreadMessageCountsProvider);
     final searchQuery = ref.watch(searchQueryProvider);

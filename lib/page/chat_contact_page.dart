@@ -1,6 +1,6 @@
 import 'package:chat_apps/page/chat_screen.dart';
-import 'package:chat_apps/page/chat_list_page.dart';
 import 'package:chat_apps/provider/user_provider.dart';
+import 'package:chat_apps/provider/message_provider.dart';
 import 'package:chat_apps/model/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,7 +13,7 @@ class ContactsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final getAllUsers = ref.watch(getAllUsersProvider);
-    final getConversationUsers = ref.watch(getConversationUsersProvider);
+    final getConversationUsers = ref.watch(conversationUsersProvider);
     final searchQuery = ref.watch(contactsSearchProvider);
     final currentUser = ref.watch(currentUserProvider);
 
