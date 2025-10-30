@@ -6,10 +6,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:async';
 
 part 'chat_list_page.g.dart';
 
 final searchQueryProvider = StateProvider<String>((ref) => '');
+final newMessageAlertProvider = StateProvider<NewMessageAlert?>((ref) => null);
+
+class NewMessageAlert {
+  final String userName;
+  final String messageContent;
+  final DateTime timestamp;
+  final bool isNewConversation;
+
+  NewMessageAlert({
+    required this.userName,
+    required this.messageContent,
+    required this.timestamp,
+    this.isNewConversation = false,
+  });
+}
 
 // Provider to get users who have conversations with current user
 @riverpod
@@ -109,10 +125,165 @@ class ChatListScreen extends ConsumerStatefulWidget {
 }
 
 class _ChatListScreenState extends ConsumerState<ChatListScreen> {
+  Timer? _alertTimer;
+  Timer? _pollingTimer;
+  final Set<String> _seenMessages = {};
+
   @override
   void initState() {
     super.initState();
-    // No need to manually load - the provider will handle it automatically
+    // Start periodic polling for new messages
+    _startMessagePolling();
+  }
+
+  @override
+  void dispose() {
+    _alertTimer?.cancel();
+    _pollingTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startMessagePolling() {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      _checkForNewMessages();
+    });
+  }
+
+  void _checkForNewMessages() {
+    final lastMessages = ref.read(getLastMessagesProvider);
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+
+    if (lastMessages.value == null || currentUserId == null) return;
+
+    final now = DateTime.now();
+
+    for (final entry in lastMessages.value!.entries) {
+      final message = entry.value;
+      final messageKey = '${message.id}_${message.createdAt?.millisecondsSinceEpoch ?? 0}';
+
+      // Check if message is new and from another user
+      if (message.senderId != currentUserId &&
+          !_seenMessages.contains(messageKey) &&
+          message.createdAt != null &&
+          now.difference(message.createdAt!).inMinutes < 1) {
+
+        _seenMessages.add(messageKey);
+        _showNewMessageAlert(message);
+
+        // Auto-dismiss alert after 5 seconds
+        _alertTimer?.cancel();
+        _alertTimer = Timer(const Duration(seconds: 5), () {
+          ref.read(newMessageAlertProvider.notifier).state = null;
+        });
+      }
+    }
+  }
+
+  void _showNewMessageAlert(MessageModel message) {
+    // Create a user-friendly alert
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    final isFromCurrentUser = message.senderId == currentUserId;
+    final userName = isFromCurrentUser ? 'You' : 'New message';
+    final messageContent = isFromCurrentUser
+        ? 'You: ${message.content ?? 'sent a message'}'
+        : message.content ?? 'sent you a message';
+
+    final alert = NewMessageAlert(
+      userName: userName,
+      messageContent: messageContent,
+      timestamp: message.createdAt ?? DateTime.now(),
+      isNewConversation: false,
+    );
+
+    ref.read(newMessageAlertProvider.notifier).state = alert;
+  }
+
+  Widget _buildNewMessageAlert(NewMessageAlert alert) {
+    return Dismissible(
+      key: Key('alert_${alert.timestamp.millisecondsSinceEpoch}'),
+      direction: DismissDirection.up,
+      onDismissed: (_) {
+        ref.read(newMessageAlertProvider.notifier).state = null;
+        _alertTimer?.cancel();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0D7FF2),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(
+                Icons.notifications_active,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    alert.userName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    alert.messageContent,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              _formatAlertTime(alert.timestamp),
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatAlertTime(DateTime time) {
+    final now = DateTime.now();
+    final difference = now.difference(time);
+
+    if (difference.inSeconds < 60) {
+      return 'now';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m';
+    } else {
+      return '${difference.inHours}h';
+    }
   }
 
   @override
@@ -121,11 +292,14 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
     final getLastMessages = ref.watch(getLastMessagesProvider);
     final searchQuery = ref.watch(searchQueryProvider);
     final currentUser = ref.watch(currentUserProvider);
+    final newMessageAlert = ref.watch(newMessageAlertProvider);
 
-    return Column(
+    return Stack(
       children: [
-        // Header
-        Padding(
+        Column(
+          children: [
+            // Header
+            Padding(
           padding: const EdgeInsets.all(16.0),
           child: Row(
             children: [
@@ -326,6 +500,16 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
             error: (error, stackTrace) => Center(child: Text('Error: $error')),
           ),
         ),
+          ],
+        ),
+        // New Message Alert Overlay
+        if (newMessageAlert != null)
+          Positioned(
+            top: 60,
+            left: 16,
+            right: 16,
+            child: _buildNewMessageAlert(newMessageAlert!),
+          ),
       ],
     );
   }
