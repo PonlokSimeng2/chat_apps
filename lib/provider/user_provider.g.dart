@@ -161,7 +161,25 @@ final getAllUsersProvider = AutoDisposeFutureProvider<List<UserModel>>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef GetAllUsersRef = AutoDisposeFutureProviderRef<List<UserModel>>;
-String _$currentUserHash() => r'6bff67c53f2fed1d3a4cad16850c87494f6bc713';
+String _$getContactUsersHash() => r'820e63f6a7bf94ff93d8be5017c218378ff793d3';
+
+/// See also [getContactUsers].
+@ProviderFor(getContactUsers)
+final getContactUsersProvider =
+    AutoDisposeFutureProvider<List<UserModel>>.internal(
+      getContactUsers,
+      name: r'getContactUsersProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$getContactUsersHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef GetContactUsersRef = AutoDisposeFutureProviderRef<List<UserModel>>;
+String _$currentUserHash() => r'9768a7de0ee6a015ca8bc7cea76ae5fb1f870b98';
 
 /// See also [currentUser].
 @ProviderFor(currentUser)
@@ -178,5 +196,133 @@ final currentUserProvider = AutoDisposeFutureProvider<UserModel?>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef CurrentUserRef = AutoDisposeFutureProviderRef<UserModel?>;
+String _$createOrGetPrivateConversationHash() =>
+    r'561141e0804a9b23911f767d47fab3faf89d6276';
+
+/// See also [createOrGetPrivateConversation].
+@ProviderFor(createOrGetPrivateConversation)
+const createOrGetPrivateConversationProvider =
+    CreateOrGetPrivateConversationFamily();
+
+/// See also [createOrGetPrivateConversation].
+class CreateOrGetPrivateConversationFamily extends Family<AsyncValue<int>> {
+  /// See also [createOrGetPrivateConversation].
+  const CreateOrGetPrivateConversationFamily();
+
+  /// See also [createOrGetPrivateConversation].
+  CreateOrGetPrivateConversationProvider call(String otherUserId) {
+    return CreateOrGetPrivateConversationProvider(otherUserId);
+  }
+
+  @override
+  CreateOrGetPrivateConversationProvider getProviderOverride(
+    covariant CreateOrGetPrivateConversationProvider provider,
+  ) {
+    return call(provider.otherUserId);
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'createOrGetPrivateConversationProvider';
+}
+
+/// See also [createOrGetPrivateConversation].
+class CreateOrGetPrivateConversationProvider
+    extends AutoDisposeFutureProvider<int> {
+  /// See also [createOrGetPrivateConversation].
+  CreateOrGetPrivateConversationProvider(String otherUserId)
+    : this._internal(
+        (ref) => createOrGetPrivateConversation(
+          ref as CreateOrGetPrivateConversationRef,
+          otherUserId,
+        ),
+        from: createOrGetPrivateConversationProvider,
+        name: r'createOrGetPrivateConversationProvider',
+        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+            ? null
+            : _$createOrGetPrivateConversationHash,
+        dependencies: CreateOrGetPrivateConversationFamily._dependencies,
+        allTransitiveDependencies:
+            CreateOrGetPrivateConversationFamily._allTransitiveDependencies,
+        otherUserId: otherUserId,
+      );
+
+  CreateOrGetPrivateConversationProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.otherUserId,
+  }) : super.internal();
+
+  final String otherUserId;
+
+  @override
+  Override overrideWith(
+    FutureOr<int> Function(CreateOrGetPrivateConversationRef provider) create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: CreateOrGetPrivateConversationProvider._internal(
+        (ref) => create(ref as CreateOrGetPrivateConversationRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        otherUserId: otherUserId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeFutureProviderElement<int> createElement() {
+    return _CreateOrGetPrivateConversationProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is CreateOrGetPrivateConversationProvider &&
+        other.otherUserId == otherUserId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, otherUserId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin CreateOrGetPrivateConversationRef on AutoDisposeFutureProviderRef<int> {
+  /// The parameter `otherUserId` of this provider.
+  String get otherUserId;
+}
+
+class _CreateOrGetPrivateConversationProviderElement
+    extends AutoDisposeFutureProviderElement<int>
+    with CreateOrGetPrivateConversationRef {
+  _CreateOrGetPrivateConversationProviderElement(super.provider);
+
+  @override
+  String get otherUserId =>
+      (origin as CreateOrGetPrivateConversationProvider).otherUserId;
+}
+
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

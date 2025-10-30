@@ -80,9 +80,22 @@ Future<List<UserModel>> getAllUsers(Ref ref) async {
 }
 
 @riverpod
+Future<List<UserModel>> getContactUsers(Ref ref) async {
+  final supabase = ref.read(supabaseProvider);
+  final userId = ref.watch(authProvider);
+  if (userId == null) return [];
+
+  // For now, return empty list since conversation_participants table doesn't exist
+  // TODO: Implement when database schema is updated
+  return [];
+}
+
+@riverpod
 FutureOr<UserModel?> currentUser(Ref ref) async {
   final userId = ref.watch(authProvider);
-  if (userId == null) return null;
+  if (userId == null) {
+    return null;
+  }
 
   final user = await getUser(ref, userId);
   // if (user?.active == false) {
@@ -91,6 +104,52 @@ FutureOr<UserModel?> currentUser(Ref ref) async {
   // }
 
   return user;
+}
+
+// Create or get a private conversation between two users
+@riverpod
+Future<int> createOrGetPrivateConversation(Ref ref, String otherUserId) async {
+  final supabase = ref.read(supabaseProvider);
+  final currentUserId = ref.watch(authProvider);
+  if (currentUserId == null) throw Exception('User not authenticated');
+
+  print('🔐 Creating private conversation between $currentUserId and $otherUserId');
+
+  // Since conversation_participants table doesn't exist, create a unique conversation per user pair
+  // Using a hash of user IDs to ensure uniqueness
+  final userPair = [currentUserId, otherUserId]..sort();
+  final conversationName = 'private_${userPair[0]}_${userPair[1]}';
+
+  // Check if conversation already exists
+  final existingConversation = await supabase.client
+      .from('conversations')
+      .select('id')
+      .eq('name', conversationName)
+      .maybeSingle();
+
+  if (existingConversation != null) {
+    print('✅ Found existing conversation with ID: ${existingConversation['id']}');
+    return existingConversation['id'] as int;
+  }
+
+  // Create new private conversation
+  final newConversation = await supabase.client
+      .from('conversations')
+      .insert({
+        'name': conversationName, // Use conversation name as unique identifier
+        'description': 'Private conversation between $currentUserId and $otherUserId',
+        'created_by': currentUserId,
+        'is_active': true,
+        'created_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      })
+      .select()
+      .single();
+
+  final conversationId = newConversation['id'] as int;
+
+  print('✅ Created private conversation with ID: $conversationId');
+  return conversationId;
 }
 
 // Update user profile function

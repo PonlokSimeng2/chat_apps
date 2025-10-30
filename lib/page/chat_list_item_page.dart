@@ -10,12 +10,14 @@ class ChatListItemPage extends ConsumerStatefulWidget {
   final UserModel user;
   final int conversationId;
   final String currentUserId;
+  final VoidCallback? onTap;
 
   const ChatListItemPage({
     super.key,
     required this.user,
     required this.conversationId,
     required this.currentUserId,
+    this.onTap,
   });
 
   @override
@@ -123,7 +125,13 @@ class _ChatListItemPageState extends ConsumerState<ChatListItemPage> {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () async {
-        // Mark messages as read when user taps on the chat item
+        // Use custom onTap if provided
+        if (widget.onTap != null) {
+          widget.onTap!();
+          return;
+        }
+
+        // Default behavior: Mark messages as read when user taps on the chat item
         if (unreadCount > 0) {
           final messageNotifier = ref.read(messageNotifierProvider.notifier);
           await messageNotifier.markAllMessagesAsRead(

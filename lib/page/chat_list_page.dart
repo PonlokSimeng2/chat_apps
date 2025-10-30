@@ -1,17 +1,29 @@
-import 'package:chat_apps/page/chat_list_item_page.dart';
 import 'package:chat_apps/page/chat_screen.dart';
+import 'package:chat_apps/page/new_chat_screen.dart';
 import 'package:chat_apps/provider/user_provider.dart';
+import 'package:chat_apps/model/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
-class ChatListScreen extends ConsumerWidget {
+class ChatListScreen extends ConsumerStatefulWidget {
   const ChatListScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final getAllusers = ref.watch(getAllUsersProvider);
+  ConsumerState<ChatListScreen> createState() => _ChatListScreenState();
+}
+
+class _ChatListScreenState extends ConsumerState<ChatListScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // No need to manually load - the provider will handle it automatically
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final getAllUsers = ref.watch(getAllUsersProvider);
     final searchQuery = ref.watch(searchQueryProvider);
     final currentUser = ref.watch(currentUserProvider);
 
@@ -46,14 +58,24 @@ class ChatListScreen extends ConsumerWidget {
                   textAlign: TextAlign.center,
                 ),
               ),
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF374151),
-                  borderRadius: BorderRadius.circular(20),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NewChatScreen(),
+                    ),
+                  );
+                },
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF374151),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Icon(Icons.edit, color: Colors.white, size: 20),
                 ),
-                child: const Icon(Icons.edit, color: Colors.white, size: 20),
               ),
             ],
           ),
@@ -98,12 +120,12 @@ class ChatListScreen extends ConsumerWidget {
         Expanded(
           child: currentUser.when(
             data: (currentUserData) {
-              return getAllusers.when(
-                data: (users) {
-                  final filteredUsers = users.where((user) {
-                    final currentUserId = currentUserData?.id;
-                    // Do not show current user in the list
-                    if (currentUserId != null && user.id == currentUserId) {
+              return getAllUsers.when(
+                data: (allUsers) {
+                  // Filter based on search query and exclude current user
+                  final filteredUsers = allUsers.where((user) {
+                    // Don't show current user in the list
+                    if (currentUserData?.id != null && user.id == currentUserData!.id) {
                       return false;
                     }
                     // Filter based on search query
@@ -112,115 +134,73 @@ class ChatListScreen extends ConsumerWidget {
                     );
                   }).toList();
 
-                  return Column(
-                    children: [
-                      // Users Row
-                      SizedBox(
-                        height: 90,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: filteredUsers.length,
-                          itemBuilder: (context, index) {
-                            final user = filteredUsers[index];
-                            return GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ChatScreen(
-                                      senderId:
-                                          currentUserData?.id?.toString() ?? '',
-                                      otherUserName: user.displayName,
-                                      otherUserAvatar:
-                                          user.profilePictureUrl ??
-                                          'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
-                                      receiverId: user.id?.toString() ?? '',
-                                      conversationId: 1,
-                                      // userId: '${currentUserData?.id}',
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: Container(
-                                width: 80,
-                                margin: const EdgeInsets.only(right: 16),
-                                child: Column(
-                                  children: [
-                                    Container(
-                                      width: 64,
-                                      height: 64,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(32),
-                                        image: DecorationImage(
-                                          image: NetworkImage(
-                                            user.profilePictureUrl ??
-                                                'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
-                                          ),
-                                          fit: BoxFit.cover,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      user.displayName,
-                                      style: const TextStyle(
-                                        color: Color(0xFFD1D5DB),
-                                        fontSize: 12,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
+                  if (filteredUsers.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'No users found',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    itemCount: filteredUsers.length,
+                    itemBuilder: (context, index) {
+                      final user = filteredUsers[index];
+                      return GestureDetector(
+                        onTap: () async {
+                          // Create or get private conversation
+                          final conversationId = await ref.read(
+                            createOrGetPrivateConversationProvider(user.id!).future,
+                          );
+
+                          if (context.mounted) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ChatScreen(
+                                  senderId: currentUserData?.id?.toString() ?? '',
+                                  otherUserName: user.displayName,
+                                  otherUserAvatar: user.profilePictureUrl ??
+                                      'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
+                                  receiverId: user.id?.toString() ?? '',
+                                  conversationId: conversationId,
                                 ),
                               ),
                             );
-                          },
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // Chat List
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: filteredUsers.length,
-                          itemBuilder: (context, index) {
-                            final user = filteredUsers[index];
-                            return GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ChatScreen(
-                                      senderId:
-                                          currentUserData?.id?.toString() ?? '',
-                                      otherUserName: user.displayName,
-                                      otherUserAvatar:
-                                          user.profilePictureUrl ??
-                                          'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
-                                      receiverId: user.id?.toString() ?? '',
-                                      conversationId: 1,
-                                      // userId: '${currentUserData?.id}',
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: ChatListItemPage(
-                                user: user,
-                                conversationId: 1, // You'll need to replace this with actual conversation ID
-                                currentUserId: currentUserData?.id?.toString() ?? '',
-                              ),
+                          }
+                        },
+                        child: SimpleUserTile(
+                          user: user,
+                          onTap: () async {
+                            // Create or get private conversation when user taps
+                            final conversationId = await ref.read(
+                              createOrGetPrivateConversationProvider(user.id!).future,
                             );
+
+                            if (context.mounted) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ChatScreen(
+                                    senderId: currentUserData?.id?.toString() ?? '',
+                                    otherUserName: user.displayName,
+                                    otherUserAvatar: user.profilePictureUrl ??
+                                        'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
+                                    receiverId: user.id?.toString() ?? '',
+                                    conversationId: conversationId,
+                                  ),
+                                ),
+                              );
+                            }
                           },
                         ),
-                      ),
-                    ],
+                      );
+                    },
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, stackTrace) =>
-                    Center(child: Text('Error: $error')),
+                error: (error, stackTrace) => Center(child: Text('Error: $error')),
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
@@ -228,6 +208,84 @@ class ChatListScreen extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class SimpleUserTile extends StatelessWidget {
+  final UserModel user;
+  final VoidCallback onTap;
+
+  const SimpleUserTile({
+    super.key,
+    required this.user,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            // Avatar
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                image: DecorationImage(
+                  image: NetworkImage(
+                    user.profilePictureUrl ??
+                        'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
+                  ),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+
+            const SizedBox(width: 16),
+
+            // User info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user.displayName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    user.isOnline == true ? 'Online' : 'Offline',
+                    style: TextStyle(
+                      color: user.isOnline == true
+                          ? const Color(0xFF10B981)
+                          : Colors.grey,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Chat icon
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF1F2937),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(Icons.chat, color: Colors.white, size: 20),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
