@@ -161,7 +161,7 @@ final getAllUsersProvider = AutoDisposeFutureProvider<List<UserModel>>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef GetAllUsersRef = AutoDisposeFutureProviderRef<List<UserModel>>;
-String _$getContactUsersHash() => r'820e63f6a7bf94ff93d8be5017c218378ff793d3';
+String _$getContactUsersHash() => r'7edfe5a5a932fc154cd7b643794e4ffde398fdce';
 
 /// See also [getContactUsers].
 @ProviderFor(getContactUsers)
@@ -197,7 +197,7 @@ final currentUserProvider = AutoDisposeFutureProvider<UserModel?>.internal(
 // ignore: unused_element
 typedef CurrentUserRef = AutoDisposeFutureProviderRef<UserModel?>;
 String _$createOrGetPrivateConversationHash() =>
-    r'561141e0804a9b23911f767d47fab3faf89d6276';
+    r'786d3f602f826300fd3a145f4b4b7ff98bdcbf50';
 
 /// See also [createOrGetPrivateConversation].
 @ProviderFor(createOrGetPrivateConversation)
