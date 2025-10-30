@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import '../model/message_model.dart';
 import '../model/message_status.dart';
 import '../provider/message_provider.dart';
@@ -29,33 +28,22 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  Timer? _typingTimer;
-  bool _isTyping = false;
 
   @override
   void initState() {
     super.initState();
+    // Load messages and setup Realtime subscription
     Future.microtask(
       () => ref
           .read(messageNotifierProvider.notifier)
-          .loadMessagesWithReceiver(widget.conversationId, widget.receiverId),
+          .loadMessages(widget.conversationId, widget.receiverId),
     );
   }
 
   void _sendMessage() {
     if (_messageController.text.trim().isEmpty) return;
 
-    // Stop typing indicator before sending
-    if (_isTyping) {
-      _isTyping = false;
-      _typingTimer?.cancel();
-      ref.read(messageNotifierProvider.notifier).sendTypingIndicator(
-        conversationId: widget.conversationId,
-        isTyping: false,
-      );
-    }
-
-    // Send message with proper authentication context for WebSocket
+    // Send message - Realtime will handle updates automatically
     ref
         .read(messageNotifierProvider.notifier)
         .sendMessage(
@@ -81,63 +69,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
-  void _onTextChanged(String text) {
-    // Send typing indicator when user starts typing
-    if (!_isTyping && text.isNotEmpty) {
-      _isTyping = true;
-      ref.read(messageNotifierProvider.notifier).sendTypingIndicator(
-        conversationId: widget.conversationId,
-        isTyping: true,
-      );
-
-      // Set timer to stop typing indicator after 3 seconds of inactivity
-      _typingTimer?.cancel();
-      _typingTimer = Timer(const Duration(seconds: 3), () {
-        if (mounted && _isTyping) {
-          _isTyping = false;
-          ref.read(messageNotifierProvider.notifier).sendTypingIndicator(
-            conversationId: widget.conversationId,
-            isTyping: false,
-          );
-        }
-      });
-    } else if (text.isEmpty && _isTyping) {
-      // User cleared the input, stop typing indicator
-      _isTyping = false;
-      _typingTimer?.cancel();
-      ref.read(messageNotifierProvider.notifier).sendTypingIndicator(
-        conversationId: widget.conversationId,
-        isTyping: false,
-      );
-    } else if (text.isNotEmpty) {
-      // User is still typing, reset the timer
-      _typingTimer?.cancel();
-      _typingTimer = Timer(const Duration(seconds: 3), () {
-        if (mounted && _isTyping) {
-          _isTyping = false;
-          ref.read(messageNotifierProvider.notifier).sendTypingIndicator(
-            conversationId: widget.conversationId,
-            isTyping: false,
-          );
-        }
-      });
-    }
-  }
-
   @override
   void dispose() {
-    _typingTimer?.cancel();
     _messageController.dispose();
     _scrollController.dispose();
-
-    // Send stop typing indicator when leaving the screen
-    if (_isTyping) {
-      ref.read(messageNotifierProvider.notifier).sendTypingIndicator(
-        conversationId: widget.conversationId,
-        isTyping: false,
-      );
-    }
-
     super.dispose();
   }
 
@@ -145,6 +80,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     final messagesState = ref.watch(messageNotifierProvider);
 
+    // Auto-scroll when new messages arrive
     ref.listen<AsyncValue<List<MessageModel>>>(messageNotifierProvider, (
       _,
       next,
@@ -226,7 +162,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
               return Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 color: const Color(0xFF1C1C1E),
                 child: Row(
                   children: [
@@ -249,7 +188,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     ),
                     const Spacer(),
                     TextButton(
-                      onPressed: () => _markAllAsRead(messagesState.value ?? []),
+                      onPressed: () =>
+                          _markAllAsRead(messagesState.value ?? []),
                       child: const Text(
                         'Mark all as read',
                         style: TextStyle(
@@ -284,10 +224,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   itemBuilder: (context, index) {
                     final message = messages[index];
                     final isSentByMe = message.senderId == widget.senderId;
-                    return _buildMessageBubble(
-                      message,
-                      isSentByMe,
-                    );
+                    return _buildMessageBubble(message, isSentByMe);
                   },
                 );
               },
@@ -336,7 +273,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   : CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: _getMessageColor(message, isSentByMe),
                     borderRadius: BorderRadius.circular(20),
@@ -374,6 +314,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
+                      const SizedBox(width: 8),
                     ],
                     // Timestamp for all messages
                     if (message.createdAt != null)
@@ -429,57 +370,44 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             const SizedBox(width: 4),
             Text(
               'Sending...',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 11,
-              ),
+              style: TextStyle(color: Colors.white70, fontSize: 11),
             ),
           ],
         );
 
       case MessageStatus.sent:
-        return Icon(
-          Icons.done,
-          size: 16,
-          color: Colors.white70,
-        );
+        return Icon(Icons.done, size: 16, color: Colors.white70);
 
       case MessageStatus.delivered:
-        return Icon(
-          Icons.done_all,
-          size: 16,
-          color: Colors.white70,
-        );
+        return Icon(Icons.done_all, size: 16, color: Colors.white70);
 
       case MessageStatus.read:
-        return Icon(
-          Icons.done_all,
-          size: 16,
-          color: const Color(0xFF0D7FF2),
-        );
+        return Icon(Icons.done_all, size: 16, color: const Color(0xFF0D7FF2));
 
       case MessageStatus.failed:
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 16,
-              color: Colors.red.shade200,
-            ),
+            Icon(Icons.error_outline, size: 16, color: Colors.red.shade200),
             const SizedBox(width: 4),
             Text(
               'Failed',
-              style: TextStyle(
-                color: Colors.red.shade200,
-                fontSize: 11,
-              ),
+              style: TextStyle(color: Colors.red.shade200, fontSize: 11),
             ),
             const SizedBox(width: 4),
             GestureDetector(
               onTap: () {
                 // Retry sending the message
-                // You could implement retry logic here
+                if (message.id != null) {
+                  ref
+                      .read(messageNotifierProvider.notifier)
+                      .sendMessage(
+                        conversationId: widget.conversationId,
+                        senderId: widget.senderId,
+                        receiverId: widget.receiverId,
+                        content: message.content ?? '',
+                      );
+                }
               },
               child: Text(
                 'Retry',
@@ -532,11 +460,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   hintStyle: TextStyle(color: Colors.grey),
                   border: InputBorder.none,
                 ),
-                onChanged: _onTextChanged,
-                onSubmitted: (_) {
-                  _sendMessage();
-                  _onTextChanged(''); // Stop typing indicator when sending
-                },
+                onSubmitted: (_) => _sendMessage(),
               ),
             ),
           ),
@@ -559,9 +483,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   // Helper method to count unread messages
   int _getUnreadCount(List<MessageModel> messages) {
     return messages
-        .where((message) =>
-            message.senderId != widget.senderId &&
-            message.isUnread)
+        .where(
+          (message) => message.senderId != widget.senderId && message.isUnread,
+        )
         .length;
   }
 
@@ -570,7 +494,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final messageNotifier = ref.read(messageNotifierProvider.notifier);
 
     for (final message in messages) {
-      if (message.senderId != widget.senderId && message.isUnread) {
+      if (message.senderId != widget.senderId &&
+          message.isUnread &&
+          message.id != null) {
         await messageNotifier.markAsRead(message.id!);
       }
     }
