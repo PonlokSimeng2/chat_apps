@@ -6,7 +6,7 @@ part of 'message_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$messageNotifierHash() => r'3904678a6e76954f86b4633039ac1d7dfcc31d76';
+String _$messageNotifierHash() => r'01702de043b0dbda72ac484a9129a1442acc1c09';
 
 /// See also [MessageNotifier].
 @ProviderFor(MessageNotifier)

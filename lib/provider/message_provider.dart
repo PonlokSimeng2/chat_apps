@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
 import '../model/message_model.dart';
 import '../model/message_status.dart';
 
@@ -11,432 +9,153 @@ part 'message_provider.g.dart';
 @Riverpod(keepAlive: true)
 class MessageNotifier extends _$MessageNotifier {
   final SupabaseClient _client = Supabase.instance.client;
-  WebSocketChannel? _wsChannel;
-  Timer? _reconnectTimer;
-  Timer? _pingTimer;
-  int _reconnectAttempts = 0;
-  static const int _maxReconnectAttempts = 5;
-  static const int _baseReconnectDelay = 2000; // 2 seconds
-  static const Duration _pingInterval = Duration(minutes: 1); // Keep-alive ping
-  int? _currentConversationId; // Track current conversation for debugging
-  String? _currentReceiverId; // Track current receiver for WebSocket connection
+  RealtimeChannel? _channel;
+  int? _currentConversationId;
+  String? _currentReceiverId;
 
   @override
   AsyncValue<List<MessageModel>> build() {
     ref.onDispose(() {
-      _wsChannel?.sink.close();
-      _reconnectTimer?.cancel();
-      _pingTimer?.cancel();
+      _disconnectRealtime();
     });
     return const AsyncValue.data([]);
   }
 
-  void _connectWebSocket(int conversationId, String receiverId) {
-    // Close any existing channel
-    _wsChannel?.sink.close();
+  void _setupRealtimeSubscription(int conversationId, String receiverId) {
+    // Remove existing subscription
+    _disconnectRealtime();
 
-    // Reset reconnection state on successful connection
-    _resetReconnectionState();
-
-    // Track current conversation and receiver for debugging and reconnection
     _currentConversationId = conversationId;
     _currentReceiverId = receiverId;
 
-    // Start ping timer for connection keep-alive
-    _startPingTimer();
-
     final currentUser = _client.auth.currentUser;
     if (currentUser == null) {
-      print('User not authenticated for WebSocket connection');
+      print('User not authenticated for Realtime subscription');
       return;
     }
 
-    // Connect to the WebSocket server with authentication and conversation context
-    final wsUrl = Uri.parse('wss://communist-alexi-kfa-8f51d6f6.koyeb.app/chat').replace(
-      queryParameters: {
-        'conversation_id': conversationId.toString(),
-        'user_id': currentUser.id,
-        'receiver_id': receiverId,
-        'token': _client.auth.currentSession?.accessToken ?? '',
-        'subscribe_to_conversation': 'true', // Explicit subscription to conversation
-      },
+    print(
+      'Realtime: 🔌 Setting up subscription for conversation $conversationId',
     );
 
-    print('WebSocket: 🔌 Connecting to conversation $conversationId for user ${currentUser.id} with receiver $receiverId');
-    print('WebSocket: 📡 Full WebSocket URL: $wsUrl');
-    _wsChannel = WebSocketChannel.connect(wsUrl);
+    // Create a channel for this conversation
+    _channel = _client.channel('messages:conversation:$conversationId');
 
-    // Send authentication message upon connection
-    final authMessage = {
-      'type': 'auth',
-      'user_id': currentUser.id,
-      'conversation_id': conversationId,
-      'token': _client.auth.currentSession?.accessToken,
-      'subscribe_to_messages': true, // Subscribe to all messages in this conversation
-      'subscribe_to_typing': true, // Subscribe to typing indicators
-    };
-
-    print('WebSocket: Sending auth message: ${authMessage.toString()}');
-    _wsChannel!.sink.add(jsonEncode(authMessage));
-
-    // Listen for connection success
-    _wsChannel!.ready.then((_) {
-      print('WebSocket: Connected successfully to conversation $conversationId');
-    }).catchError((error) {
-      print('WebSocket: Connection failed: $error');
-    });
-
-    // Listen to incoming messages
-    _wsChannel!.stream.listen(
-      (message) {
-      //  print('WebSocketsssssss: Raw message received: ${message.length > 100 ? message.substring(0, 100) + "..." : message}');
-
-        try {
-          if (message.isEmpty || message.trim().isEmpty) {
-      //     print('WebSocketsssssss: Received empty message, ignoring');
-            return;
+    // Subscribe to INSERT events
+    _channel!
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'messages',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'conversation_id',
+            value: conversationId,
+          ),
+          callback: (payload) {
+            print('Realtime: 📨 New message received');
+            _handleInsert(payload);
+          },
+        )
+        // Subscribe to UPDATE events
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'messages',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'conversation_id',
+            value: conversationId,
+          ),
+          callback: (payload) {
+            print('Realtime: 🔄 Message updated');
+            _handleUpdate(payload);
+          },
+        )
+        // Subscribe to DELETE events
+        .onPostgresChanges(
+          event: PostgresChangeEvent.delete,
+          schema: 'public',
+          table: 'messages',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'conversation_id',
+            value: conversationId,
+          ),
+          callback: (payload) {
+            print('Realtime: 🗑️ Message deleted');
+            _handleDelete(payload);
+          },
+        )
+        .subscribe((status, error) {
+          if (status == RealtimeSubscribeStatus.subscribed) {
+            print(
+              'Realtime: ✅ Successfully subscribed to conversation $conversationId',
+            );
+          } else if (status == RealtimeSubscribeStatus.timedOut) {
+            print('Realtime: ⏱️ Subscription timed out, retrying...');
+            // Retry subscription
+            Future.delayed(const Duration(seconds: 2), () {
+              _setupRealtimeSubscription(conversationId, receiverId);
+            });
+          } else if (status == RealtimeSubscribeStatus.channelError) {
+            print('Realtime: ❌ Channel error: $error');
           }
-
-          dynamic decodedMessage;
-          try {
-            decodedMessage = jsonDecode(message);
-          } catch (e) {
-            print('WebSocket: Failed to decode JSON message: $message, error: $e');
-            return;
-          }
-
-          // Validate message structure
-          if (decodedMessage == null) {
-            print('WebSocket: Received null message, ignoring');
-            return;
-          }
-
-          if (decodedMessage is! Map) {
-            print('WebSocket: Received non-map message: $decodedMessage, type: ${decodedMessage.runtimeType}');
-            return;
-          }
-
-          final messageType = decodedMessage['type'] as String?;
-          final messageData = decodedMessage['data'];
-
-          if (messageType == null) {
-         //   print('WebSocketssss: Received message without type: $decodedMessage');
-            return;
-          }
-
-        print('WebSocket: Processing message type: $messageType');
-        print('WebSocket: Full message structure: ${decodedMessage.toString()}');
-
-          // Handle different message types with proper validation
-          switch (messageType) {
-            case 'message':
-              if (messageData != null && messageData is Map) {
-                try {
-                  print('WebSocket: 📨 Attempting to parse message data: $messageData');
-                  final newMessage = MessageModel.fromJson(messageData as Map<String, dynamic>);
-                  print('WebSocket: 📨 Received message from ${newMessage.senderId} to ${newMessage.receiverId} in conversation ${newMessage.conversationId}');
-
-                  // Always add the message - this will work for both sender and receiver
-                  addMessage(newMessage);
-                  print('WebSocket: ✅ Message added to UI: ${newMessage.content?.substring(0, 50)}');
-                } catch (e) {
-                  print('WebSocket: ❌ Error parsing message data: $messageData, error: $e');
-                  // Try to handle messages in a different format
-                  _handleAlternativeMessageFormat(Map<String, dynamic>.from(messageData));
-                }
-              } else if (messageData == null && decodedMessage['content'] != null) {
-                // Handle case where message content is at root level (common in simple chat servers)
-                print('WebSocket: 📨 Received message at root level: $decodedMessage');
-                _handleSimpleMessage(Map<String, dynamic>.from(decodedMessage));
-              } else {
-                print('WebSocket: ⚠️ Received message with invalid data: $messageData');
-              }
-              break;
-
-            case 'message_updated':
-              if (messageData != null && messageData is Map) {
-                try {
-                  final updatedMessage = MessageModel.fromJson(messageData as Map<String, dynamic>);
-                  updateMessage(updatedMessage);
-                } catch (e) {
-                  print('Error parsing updated message data: $messageData, error: $e');
-                }
-              } else {
-                print('Received message_updated with invalid data: $messageData');
-              }
-              break;
-
-            case 'message_deleted':
-              if (messageData != null && messageData is Map) {
-                final messageId = messageData['message_id'];
-                if (messageId != null && messageId is int) {
-                  deleteMessage(messageId);
-                } else {
-                  print('Received message_deleted with invalid message_id: $messageId');
-                }
-              } else {
-                print('Received message_deleted with invalid data: $messageData');
-              }
-              break;
-
-            case 'typing':
-              if (messageData != null && messageData is Map) {
-                print('WebSocket: ⌨️ Typing indicator received: $messageData');
-                _handleTypingIndicator(messageData as Map<String, dynamic>);
-              } else if (messageData == null) {
-                // Handle null data - might be just a typing indicator without data
-                print('WebSocket: ⚠️ Server sends typing indicators without data - ignoring');
-              } else {
-                print('WebSocket: ⚠️ Typing indicator with invalid data type: ${messageData.runtimeType}, data: $messageData');
-              }
-              break;
-
-            case 'user_count':
-              if (messageData != null && messageData is Map) {
-                _handleUserCountUpdate(messageData as Map<String, dynamic>);
-              } else if (messageData is int) {
-                // Handle simple integer count
-                _handleUserCountUpdate({'count': messageData});
-              } else if (messageData == null) {
-                // Handle null data silently - server might send empty updates
-                // print('Received user_count update with null data - connection might be unstable');
-              } else {
-                print('Received user_count update with invalid data type: ${messageData.runtimeType}, data: $messageData');
-              }
-              break;
-
-            case 'system':
-              if (messageData != null && messageData is Map) {
-                _handleSystemMessage(messageData as Map<String, dynamic>);
-              } else if (messageData is String) {
-                // Handle simple string system messages
-                _handleSystemMessage({'message': messageData});
-              } else if (messageData == null) {
-                // Handle null data - server might send empty updates
-                print('WebSocket: 📢 System message received with null data');
-              } else {
-                print('Received system message with invalid data type: ${messageData.runtimeType}, data: $messageData');
-              }
-              break;
-
-            case 'connection_status':
-              if (messageData != null && messageData is Map) {
-                _handleConnectionStatus(messageData as Map<String, dynamic>);
-              } else if (messageData == null) {
-                // Handle null data silently - server might send empty status updates
-                // print('Received connection status with null data - ignoring');
-              } else {
-                print('Received connection status with invalid data type: ${messageData.runtimeType}, data: $messageData');
-              }
-              break;
-
-            case 'auth_response':
-              // Handle authentication response
-              if (messageData != null) {
-                print('WebSocket authentication response: $messageData');
-              } else {
-                print('WebSocket authentication response: null - connection established');
-              }
-              break;
-
-            case 'message_received':
-              // Handle message received confirmation
-              if (messageData != null && messageData is Map) {
-                print('WebSocket: Message received confirmation: $messageData');
-              }
-              break;
-
-            case 'conversation_joined':
-              // Handle conversation joined notification
-              if (messageData != null && messageData is Map) {
-                print('WebSocket: Joined conversation: $messageData');
-              }
-              break;
-
-            case 'ping':
-              // Handle ping messages (keep-alive)
-              _sendPongMessage();
-              break;
-
-            case 'pong':
-              // Handle pong responses
-              print('Received pong from server');
-              break;
-
-            default:
-              print('WebSocket: ❓ Unknown message type: $messageType, data: $messageData');
-              // Try to handle this as a potential message that wasn't properly classified
-              if (decodedMessage['content'] != null || decodedMessage['message'] != null) {
-                print('WebSocket: 🔄 Treating unknown message as chat message');
-                _handleSimpleMessage(Map<String, dynamic>.from(decodedMessage));
-              }
-          }
-        } catch (e, stackTrace) {
-          print('Error handling WebSocket message: $e\nStack trace: $stackTrace');
-        }
-      },
-      onError: (error) {
-        print('WebSocket error: $error');
-        // Attempt to reconnect with exponential backoff
-        _scheduleReconnect(conversationId);
-      },
-      onDone: () {
-        print('WebSocket closed');
-        // Attempt to reconnect with exponential backoff
-        _scheduleReconnect(conversationId);
-      },
-    );
+        });
   }
 
-  void _handleTypingIndicator(Map<String, dynamic> data) {
+  void _handleInsert(PostgresChangePayload payload) {
     try {
-      // Your server sends: {"type":"typing","username":null,"timestamp":"2025-10-28T09:42:52.300Z"}
-      final username = data['username'] as String?;
-      final timestamp = data['timestamp'] as String?;
+      final newData = payload.newRecord;
+      if (newData.isEmpty) return;
 
-      if (username != null && username.isNotEmpty) {
-        print('⌨️ Typing indicator: User $username is typing (timestamp: $timestamp)');
+      final newMessage = MessageModel.fromJson(newData);
+      print('Realtime: 📨 Adding new message from ${newMessage.senderId}');
 
-        // You could use this to show typing indicators in the UI
-        // For example: _updateTypingStatus(username, true);
+      addMessage(newMessage);
+    } catch (e) {
+      print('Realtime: ❌ Error handling insert: $e');
+    }
+  }
 
-        // If you want to implement typing indicators, you could:
-        // 1. Store typing status in a state management system
-        // 2. Update the UI to show "$username is typing..."
-        // 3. Clear typing status after a timeout
-      } else {
-        // Handle case where username is null (server might send typing start/stop)
-       // print('⌨️ Typing indicator received (no username) - timestamp: $timestamp');
+  void _handleUpdate(PostgresChangePayload payload) {
+    try {
+      final newData = payload.newRecord;
+      if (newData.isEmpty) return;
 
-        // Could interpret this as "someone is typing" or generic typing indicator
+      final updatedMessage = MessageModel.fromJson(newData);
+      print('Realtime: 🔄 Updating message ${updatedMessage.id}');
+
+      updateMessage(updatedMessage);
+    } catch (e) {
+      print('Realtime: ❌ Error handling update: $e');
+    }
+  }
+
+  void _handleDelete(PostgresChangePayload payload) {
+    try {
+      final oldData = payload.oldRecord;
+      if (oldData.isEmpty) return;
+
+      final messageId = oldData['id'] as int?;
+      if (messageId != null) {
+        print('Realtime: 🗑️ Deleting message $messageId');
+        deleteMessage(messageId);
       }
     } catch (e) {
-      print('Error handling typing indicator: $e, data: $data');
+      print('Realtime: ❌ Error handling delete: $e');
     }
   }
 
-  void _handleUserCountUpdate(Map<String, dynamic> data) {
-    try {
-      final count = data['count'] as int?;
-      if (count != null) {
-        print('Online user count: $count');
-        // You could use this to update online status in the UI
-        // For example: _updateOnlineUserCount(count);
-      } else {
-        print('User count update without count field: $data');
-      }
-    } catch (e) {
-      print('Error handling user count update: $e, data: $data');
+  void _disconnectRealtime() {
+    if (_channel != null) {
+      print('Realtime: 🔌 Disconnecting from channel');
+      _client.removeChannel(_channel!);
+      _channel = null;
     }
   }
 
-  void _handleSystemMessage(Map<String, dynamic> data) {
-    try {
-      final message = data['message'] as String?;
-      final type = data['type'] as String?;
-
-      if (message != null) {
-        print('System message: $message');
-        // You could display system notifications in the chat
-        // For example: _addSystemMessageToChat(message);
-      } else if (type != null) {
-        print('System event: $type');
-        // Handle system events like user joined/left
-        // For example: _handleSystemEvent(type, data);
-      } else {
-        print('System message received: $data');
-      }
-    } catch (e) {
-      print('Error handling system message: $e, data: $data');
-    }
-  }
-
-  void _handleConnectionStatus(Map<String, dynamic> data) {
-    try {
-      final status = data['status'] as String?;
-      final connected = data['connected'] as bool?;
-
-      if (status != null) {
-        print('Connection status: $status');
-      } else if (connected != null) {
-        print('Connection state: ${connected ? "Connected" : "Disconnected"}');
-      } else {
-        print('Connection status update: $data');
-      }
-      // You could use this to show connection status in the UI
-      // For example: _updateConnectionStatus(status);
-    } catch (e) {
-      print('Error handling connection status: $e, data: $data');
-    }
-  }
-
-  void _scheduleReconnect(int conversationId) {
-    if (_reconnectAttempts >= _maxReconnectAttempts) {
-      print('Max reconnection attempts reached. Giving up.');
-      return;
-    }
-
-    _reconnectTimer?.cancel();
-    final delay = _baseReconnectDelay * (1 << _reconnectAttempts); // Exponential backoff
-
-    print('Scheduling reconnection attempt ${_reconnectAttempts + 1} in ${delay}ms');
-
-    _reconnectTimer = Timer(Duration(milliseconds: delay), () {
-      _reconnectAttempts++;
-      if (state.value != null) { // Only reconnect if we have messages loaded
-        print('Attempting to reconnect...');
-        _connectWebSocket(conversationId, _currentReceiverId!);
-      }
-    });
-  }
-
-  void _resetReconnectionState() {
-    _reconnectAttempts = 0;
-    _reconnectTimer?.cancel();
-  }
-
-  void _sendPongMessage() {
-    if (_wsChannel != null) {
-      try {
-        _wsChannel!.sink.add(jsonEncode({
-          'type': 'pong',
-          'timestamp': DateTime.now().toIso8601String(),
-        }));
-      } catch (e) {
-        print('Error sending pong message: $e');
-      }
-    }
-  }
-
-  void _startPingTimer() {
-    _pingTimer?.cancel();
-    _pingTimer = Timer.periodic(_pingInterval, (_) {
-      if (_wsChannel != null) {
-        try {
-          final pingMessage = {
-            'type': 'ping',
-            'timestamp': DateTime.now().toIso8601String(),
-            'conversation_id': _currentConversationId,
-          };
-          _wsChannel!.sink.add(jsonEncode(pingMessage));
-          print('WebSocket: 💓 Sent ping to maintain connection');
-        } catch (e) {
-          print('WebSocket: ❌ Error sending ping message: $e');
-          // Try to reconnect on ping failure
-          if (_currentConversationId != null && _currentReceiverId != null) {
-            _connectWebSocket(_currentConversationId!, _currentReceiverId!);
-          }
-        }
-      }
-    });
-  }
-
-  void _stopPingTimer() {
-    _pingTimer?.cancel();
-    _pingTimer = null;
-  }
-
-  Future<void> loadMessages(int conversationId) async {
+  Future<void> loadMessages(int conversationId, String receiverId) async {
     state = const AsyncValue.loading();
 
     try {
@@ -453,46 +172,23 @@ class MessageNotifier extends _$MessageNotifier {
 
       state = AsyncValue.data(messages);
 
-      // Setup WebSocket connection
-      _connectWebSocket(conversationId, _currentReceiverId!);
+      // Setup Realtime subscription
+      _setupRealtimeSubscription(conversationId, receiverId);
     } catch (e, stack) {
       state = AsyncValue.error(e, stack);
     }
   }
 
-  // Public method to load messages and establish WebSocket connection with receiver context
-  Future<void> loadMessagesWithReceiver(int conversationId, String receiverId) async {
-    state = const AsyncValue.loading();
-
-    try {
-      final response = await _client
-          .from('messages')
-          .select()
-          .eq('conversation_id', conversationId)
-          .eq('is_deleted', false)
-          .order('created_at', ascending: true);
-
-      final messages = (response as List)
-          .map((json) => MessageModel.fromJson(json))
-          .toList();
-
-      state = AsyncValue.data(messages);
-
-      // Setup WebSocket connection with receiver context
-      _connectWebSocket(conversationId, receiverId);
-    } catch (e, stack) {
-      state = AsyncValue.error(e, stack);
-    }
-  }
-
-  // Public method to add message (for WebSocket integration)
+  // Public method to add message (for Realtime integration)
   void addMessage(MessageModel message) {
     final currentData = state.value ?? [];
 
     // Check if message already exists to avoid duplicates
-    final existingMessageIndex = currentData.indexWhere((msg) =>
-        (msg.id != null && msg.id == message.id) ||
-        (msg.tempId != null && msg.tempId == message.tempId));
+    final existingMessageIndex = currentData.indexWhere(
+      (msg) =>
+          (msg.id != null && msg.id == message.id) ||
+          (msg.tempId != null && msg.tempId == message.tempId),
+    );
 
     if (existingMessageIndex != -1) {
       // Update existing message (useful for updating status of temp messages)
@@ -505,7 +201,7 @@ class MessageNotifier extends _$MessageNotifier {
     }
   }
 
-  // Public method to update message (for WebSocket integration)
+  // Public method to update message (for Realtime integration)
   void updateMessage(MessageModel message) {
     final currentData = state.value ?? [];
     final updatedList = currentData.map((msg) {
@@ -514,7 +210,7 @@ class MessageNotifier extends _$MessageNotifier {
     state = AsyncValue.data(updatedList);
   }
 
-  // Public method to delete message (for WebSocket integration)
+  // Public method to delete message (for Realtime integration)
   void deleteMessage(int messageId) {
     final currentData = state.value ?? [];
     final filteredList = currentData
@@ -579,25 +275,20 @@ class MessageNotifier extends _$MessageNotifier {
         status: MessageStatus.sent,
       );
 
-      // 5. Send the persisted message over WebSocket
-      final wsMessage = {
-        'type': 'message',
-        'data': response,
-      };
-      print('WebSocket: 📤 Sending message to server: ${jsonEncode(wsMessage)}');
-      _wsChannel?.sink.add(jsonEncode(wsMessage));
-
-      // 6. Replace temporary message with permanent one
+      // 5. Replace temporary message with permanent one
+      // Note: Realtime will also trigger an insert event, but we handle duplicates in addMessage
       addMessage(permanentMessage);
     } catch (e) {
-      // 7. Handle send failure - update message status to failed
+      // 6. Handle send failure - update message status to failed
       final failedMessage = tempMessage.copyWith(status: MessageStatus.failed);
       addMessage(failedMessage);
 
       // Optionally remove failed message after a delay
       Future.delayed(const Duration(seconds: 5), () {
         final currentData = state.value ?? [];
-        final updatedList = currentData.where((msg) => msg.uniqueId != tempMessage.uniqueId).toList();
+        final updatedList = currentData
+            .where((msg) => msg.uniqueId != tempMessage.uniqueId)
+            .toList();
         state = AsyncValue.data(updatedList);
       });
 
@@ -623,7 +314,7 @@ class MessageNotifier extends _$MessageNotifier {
 
       final updatedMessage = MessageModel.fromJson(response);
 
-      // Update local state immediately
+      // Update local state immediately (Realtime will also trigger)
       updateMessage(updatedMessage);
 
       return updatedMessage;
@@ -642,7 +333,7 @@ class MessageNotifier extends _$MessageNotifier {
           })
           .eq('id', messageId);
 
-      // Update local state immediately
+      // Update local state immediately (Realtime will also trigger)
       deleteMessage(messageId);
     } catch (e) {
       throw Exception('Failed to delete message: $e');
@@ -659,7 +350,6 @@ class MessageNotifier extends _$MessageNotifier {
           })
           .eq('id', messageId);
     } catch (e) {
-      // Don't throw error for read receipts as they're not critical
       print('Failed to mark message as read: $e');
     }
   }
@@ -679,7 +369,6 @@ class MessageNotifier extends _$MessageNotifier {
           .neq('sender_id', userId)
           .filter('read_at', 'is', null);
     } catch (e) {
-      // Don't throw error for read receipts as they're not critical
       print('Failed to mark all messages as read: $e');
     }
   }
@@ -705,7 +394,6 @@ class MessageNotifier extends _$MessageNotifier {
     }
   }
 
-  // Get messages for a specific conversation
   List<MessageModel> getMessagesForConversation(int conversationId) {
     final allMessages = state.value ?? [];
     return allMessages
@@ -752,86 +440,15 @@ class MessageNotifier extends _$MessageNotifier {
     }
   }
 
-  // Send typing indicator
-  void sendTypingIndicator({
-    required int conversationId,
-    required bool isTyping,
-  }) {
-    final currentUser = _client.auth.currentUser;
-    if (currentUser == null) return;
-
-    _wsChannel?.sink.add(jsonEncode({
-      'type': 'typing',
-      'data': {
-        'user_id': currentUser.id,
-        'conversation_id': conversationId,
-        'is_typing': isTyping,
-        'timestamp': DateTime.now().toIso8601String(),
-      },
-    }));
-  }
-
-  // Handle alternative message formats from different servers
-  void _handleAlternativeMessageFormat(Map<String, dynamic> messageData) {
-    try {
-      print('WebSocket: 🔧 Attempting to handle alternative message format: $messageData');
-
-      // Try to create a MessageModel from available data
-      final message = MessageModel(
-        id: messageData['id'] as int?,
-        conversationId: _currentConversationId ?? 1,
-        senderId: messageData['senderId']?.toString() ?? messageData['user_id']?.toString() ?? 'unknown',
-        receiverId: messageData['receiverId']?.toString() ?? messageData['target_user_id']?.toString() ?? _currentReceiverId ?? 'unknown',
-        content: messageData['content']?.toString() ?? messageData['message']?.toString() ?? 'No content',
-        createdAt: messageData['timestamp'] != null
-            ? DateTime.parse(messageData['timestamp'].toString())
-            : DateTime.now(),
-        status: MessageStatus.sent,
-      );
-
-      addMessage(message);
-      print('WebSocket: ✅ Alternative format message added to UI');
-    } catch (e) {
-      print('WebSocket: ❌ Failed to handle alternative message format: $e');
-    }
-  }
-
-  // Handle simple message format (content at root level)
-  void _handleSimpleMessage(Map<String, dynamic> decodedMessage) {
-    try {
-      print('WebSocket: 🔧 Handling simple message format: $decodedMessage');
-
-      final message = MessageModel(
-        id: decodedMessage['id'] as int?,
-        conversationId: _currentConversationId ?? 1,
-        senderId: decodedMessage['user_id']?.toString() ?? decodedMessage['sender']?.toString() ?? 'unknown',
-        receiverId: _currentReceiverId ?? 'unknown',
-        content: decodedMessage['content']?.toString() ?? decodedMessage['message']?.toString() ?? 'No content',
-        createdAt: decodedMessage['timestamp'] != null
-            ? DateTime.parse(decodedMessage['timestamp'].toString())
-            : DateTime.now(),
-        status: MessageStatus.sent,
-      );
-
-      addMessage(message);
-      print('WebSocket: ✅ Simple format message added to UI');
-    } catch (e) {
-      print('WebSocket: ❌ Failed to handle simple message format: $e');
-    }
-  }
-
   // Clear all messages (useful when logging out)
   void clearMessages() {
+    _disconnectRealtime();
     state = const AsyncValue.data([]);
   }
 
-  // Disconnect WebSocket
+  // Disconnect Realtime
   void disconnect() {
-    _reconnectTimer?.cancel();
-    _pingTimer?.cancel();
-    _wsChannel?.sink.close();
-    _wsChannel = null;
-    _resetReconnectionState();
+    _disconnectRealtime();
   }
 }
 
