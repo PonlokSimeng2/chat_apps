@@ -13,7 +13,7 @@ final searchQueryProvider = StateProvider<String>((ref) => '');
 
 // Provider to get users who have conversations with current user
 @riverpod
-Future<List<UserModel>> getConversationUsers(GetConversationUsersRef ref) async {
+Future<List<UserModel>> getConversationUsers(Ref ref) async {
   final supabase = Supabase.instance.client;
   final currentUserId = supabase.auth.currentUser?.id;
   if (currentUserId == null) return [];
@@ -56,7 +56,7 @@ Future<List<UserModel>> getConversationUsers(GetConversationUsersRef ref) async 
 
 // Provider to get the last message for each conversation
 @riverpod
-Future<Map<String, MessageModel>> getLastMessages(GetLastMessagesRef ref) async {
+Future<Map<String, MessageModel>> getLastMessages(Ref ref) async {
   final supabase = Supabase.instance.client;
   final currentUserId = supabase.auth.currentUser?.id;
   if (currentUserId == null) return {};
