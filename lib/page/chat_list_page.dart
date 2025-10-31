@@ -131,6 +131,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
 
             const SizedBox(height: 16),
 
+<<<<<<< HEAD
             Expanded(
               child: currentUser.when(
                 data: (currentUserData) {
@@ -167,6 +168,89 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                                             fontSize: 12,
                                             fontWeight: FontWeight.w600,
                                             letterSpacing: 1.0,
+=======
+                          // If currentUserId is null, show empty state
+                          if (currentUserId == null) {
+                            return const SliverFillRemaining(
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.person_off,
+                                      size: 64,
+                                      color: Colors.grey,
+                                    ),
+                                    SizedBox(height: 16),
+                                    Text(
+                                      'Please log in to view conversations',
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
+
+                          return CustomScrollView(
+                            slivers: [
+                              // Conversations Section
+                              if (conversationUsersList.isNotEmpty) ...[
+                                const SliverToBoxAdapter(
+                                  child: Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    child: Text(
+                                      'CONVERSATIONS',
+                                      style: TextStyle(
+                                        color: Color(0xFF9CA3AF),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 1.0,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                SliverList(
+                                  delegate: SliverChildBuilderDelegate(
+                                    (context, index) {
+                                      final user = conversationUsersList[index];
+                                      final conversationKey = _getConversationKey(
+                                        currentUserId,
+                                        currentUserId,
+                                        user.id ?? '',
+                                      );
+                                      final lastMessage = lastMessages[conversationKey];
+                                      final unreadCount = unreadCounts[conversationKey] ?? 0;
+
+                                  return ConversationTile(
+                                    user: user,
+                                    lastMessage: lastMessage,
+                                    currentUserId: currentUserId,
+                                    unreadCount: unreadCount,
+                                    onTap: () async {
+                                      if (user.id == null) return;
+
+                                      final conversationId = await ref.read(
+                                        createOrGetPrivateConversationProvider(user.id!).future,
+                                      );
+
+                                      if (context.mounted) {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => ChatScreen(
+                                              senderId: currentUserId,
+                                              otherUserName: user.displayName,
+                                              otherUserAvatar: user.profilePictureUrl ??
+                                                  'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
+                                              receiverId: user.id?.toString() ?? '',
+                                              conversationId: conversationId,
+                                            ),
+>>>>>>> 08da7e8 (chat_list_page)
                                           ),
                                         ),
                                       ),
@@ -501,9 +585,9 @@ class ConversationTile extends StatelessWidget {
 
     if (lastMessage!.senderId == currentUserId) {
       if (lastMessage!.isEdited == true) {
-        return 'You: ${lastMessage!.content} (edited)';
+        return 'You: ${lastMessage!.content ?? ''} (edited)';
       }
-      return 'You: ${lastMessage!.content}';
+      return 'You: ${lastMessage!.content ?? ''}';
     }
 
     return lastMessage!.content ?? '';
