@@ -81,7 +81,6 @@ Future<List<UserModel>> getAllUsers(Ref ref) async {
 
 @riverpod
 Future<List<UserModel>> getContactUsers(Ref ref) async {
-  final supabase = ref.read(supabaseProvider);
   final userId = ref.watch(authProvider);
   if (userId == null) return [];
 
