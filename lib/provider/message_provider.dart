@@ -12,8 +12,6 @@ part 'message_provider.g.dart';
 class MessageNotifier extends _$MessageNotifier {
   final SupabaseClient _client = Supabase.instance.client;
   RealtimeChannel? _channel;
-  int? _currentConversationId;
-  String? _currentReceiverId;
 
   @override
   AsyncValue<List<MessageModel>> build() {
@@ -26,9 +24,6 @@ class MessageNotifier extends _$MessageNotifier {
   void _setupRealtimeSubscription(int conversationId, String receiverId) {
     // Remove existing subscription
     _disconnectRealtime();
-
-    _currentConversationId = conversationId;
-    _currentReceiverId = receiverId;
 
     final currentUser = _client.auth.currentUser;
     if (currentUser == null) {
@@ -644,7 +639,11 @@ Stream<Map<String, int>> getUnreadMessageCounts(Ref ref) async* {
 }
 
 // Helper function to create a unique conversation key
-String _getConversationKey(String currentUserId, String senderId, String receiverId) {
+String _getConversationKey(
+  String currentUserId,
+  String senderId,
+  String receiverId,
+) {
   final users = [senderId, receiverId]..sort();
   return '${users[0]}_${users[1]}';
 }
@@ -672,7 +671,11 @@ Future<Map<String, MessageModel>> _fetchLastMessages(
 
     for (final messageData in response as List) {
       final message = MessageModel.fromJson(messageData);
-      final conversationKey = _getConversationKey(currentUserId, message.senderId, message.receiverId);
+      final conversationKey = _getConversationKey(
+        currentUserId,
+        message.senderId,
+        message.receiverId,
+      );
 
       if (!processedConversations.contains(conversationKey)) {
         lastMessages[conversationKey] = message;
@@ -704,7 +707,11 @@ Future<Map<String, int>> _fetchUnreadCounts(
 
     for (final messageData in response as List) {
       final message = MessageModel.fromJson(messageData);
-      final conversationKey = _getConversationKey(currentUserId, message.senderId, message.receiverId);
+      final conversationKey = _getConversationKey(
+        currentUserId,
+        message.senderId,
+        message.receiverId,
+      );
       unreadCounts[conversationKey] = (unreadCounts[conversationKey] ?? 0) + 1;
     }
 
