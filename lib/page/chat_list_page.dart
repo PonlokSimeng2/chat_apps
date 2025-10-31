@@ -9,11 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
 // Helper function to create a unique conversation key
-String _getConversationKey(
-  String currentUserId,
-  String senderId,
-  String receiverId,
-) {
+String _getConversationKey(String currentUserId, String senderId, String receiverId) {
   final users = [senderId, receiverId]..sort();
   return '${users[0]}_${users[1]}';
 }
@@ -43,7 +39,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
     final getUnreadMessageCounts = ref.watch(getUnreadMessageCountsProvider);
     final searchQuery = ref.watch(searchQueryProvider);
     final currentUser = ref.watch(currentUserProvider);
-    // final newMessageAlert = ref.watch(newMessageAlertProvider);
+   // final newMessageAlert = ref.watch(newMessageAlertProvider);
 
     return Stack(
       children: [
@@ -51,124 +47,99 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
           children: [
             // Header
             Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      image: const DecorationImage(
-                        image: NetworkImage(
-                          'https://lh3.googleusercontent.com/aida-public/AB6AXuBpEN6dfbSeC6GJfwBfgdExi8xM_e-PYrwfawXMDgbQDDaKbP9PzGHGz7DKuCcyFy00ljTbUAkf4Xdc6LHXgyiKB7ZCpBuT_XXNAR6uNfsoYeQLrPwKK6tTSK0We2htGRqGH79Bq0mUZnvu1-52ZJV26ORS4Lk2xvAmXvksK-a6b0p3sIPVrjHb_Wf1tbiAG_gYdyKJHI45FoK5KZv3YEo76U6mx-xwckcJ2PxS6ku7wwUmHWWjqV2-yvPMWHS1jX0SIsmsabt-iUPn',
-                        ),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  const Expanded(
-                    child: Text(
-                      'Chats',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF374151),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Icon(
-                      Icons.chat,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Search Bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Container(
-                height: 48,
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1F2937),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Row(
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.only(left: 16.0),
-                      child: Icon(Icons.search, color: Colors.grey),
+                  borderRadius: BorderRadius.circular(20),
+                  image: const DecorationImage(
+                    image: NetworkImage(
+                      'https://lh3.googleusercontent.com/aida-public/AB6AXuBpEN6dfbSeC6GJfwBfgdExi8xM_e-PYrwfawXMDgbQDDaKbP9PzGHGz7DKuCcyFy00ljTbUAkf4Xdc6LHXgyiKB7ZCpBuT_XXNAR6uNfsoYeQLrPwKK6tTSK0We2htGRqGH79Bq0mUZnvu1-52ZJV26ORS4Lk2xvAmXvksK-a6b0p3sIPVrjHb_Wf1tbiAG_gYdyKJHI45FoK5KZv3YEo76U6mx-xwckcJ2PxS6ku7wwUmHWWjqV2-yvPMWHS1jX0SIsmsabt-iUPn',
                     ),
-                    Expanded(
-                      child: TextField(
-                        onChanged: (value) {
-                          ref.read(searchQueryProvider.notifier).state = value;
-                        },
-                        decoration: const InputDecoration(
-                          hintText: 'Search',
-                          hintStyle: TextStyle(color: Colors.grey),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 8),
-                        ),
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ],
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
+              const Expanded(
+                child: Text(
+                  'Chats',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF374151),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(Icons.chat, color: Colors.white, size: 20),
+              ),
+            ],
+          ),
+        ),
+
+        // Search Bar
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Container(
+            height: 48,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1F2937),
+              borderRadius: BorderRadius.circular(24),
             ),
+            child: Row(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(left: 16.0),
+                  child: Icon(Icons.search, color: Colors.grey),
+                ),
+                Expanded(
+                  child: TextField(
+                    onChanged: (value) {
+                      ref.read(searchQueryProvider.notifier).state = value;
+                    },
+                    decoration: const InputDecoration(
+                      hintText: 'Search',
+                      hintStyle: TextStyle(color: Colors.grey),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
 
-            const SizedBox(height: 16),
+        const SizedBox(height: 16),
 
-<<<<<<< HEAD
-            Expanded(
-              child: currentUser.when(
-                data: (currentUserData) {
-                  return getConversationUsers.when(
-                    data: (conversationUsers) {
-                      return getLastMessages.when(
-                        data: (lastMessages) {
-                          return getUnreadMessageCounts.when(
-                            data: (unreadCounts) {
-                              // Get users with conversations, filtered by search query
-                              final currentUserId = currentUserData?.id;
-                              final conversationUsersList = conversationUsers
-                                  .where((user) {
-                                    return user.displayName
-                                        .toLowerCase()
-                                        .contains(searchQuery.toLowerCase());
-                                  })
-                                  .toList();
+        Expanded(
+          child: currentUser.when(
+            data: (currentUserData) {
+              return getConversationUsers.when(
+                data: (conversationUsers) {
+                  return getLastMessages.when(
+                    data: (lastMessages) {
+                      return getUnreadMessageCounts.when(
+                        data: (unreadCounts) {
+                          // Get users with conversations, filtered by search query
+                          final currentUserId = currentUserData?.id;
+                          final conversationUsersList = conversationUsers.where((user) {
+                            return user.displayName.toLowerCase().contains(
+                              searchQuery.toLowerCase(),
+                            );
+                          }).toList();
 
-                              return CustomScrollView(
-                                slivers: [
-                                  // Conversations Section
-                                  if (conversationUsersList.isNotEmpty) ...[
-                                    const SliverToBoxAdapter(
-                                      child: Padding(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 8,
-                                        ),
-                                        child: Text(
-                                          'CONVERSATIONS',
-                                          style: TextStyle(
-                                            color: Color(0xFF9CA3AF),
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            letterSpacing: 1.0,
-=======
                           // If currentUserId is null, show empty state
                           if (currentUserId == null) {
                             return const SliverFillRemaining(
@@ -250,128 +221,69 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                                               receiverId: user.id?.toString() ?? '',
                                               conversationId: conversationId,
                                             ),
->>>>>>> 08da7e8 (chat_list_page)
                                           ),
-                                        ),
+                                        );
+                                      }
+                                    },
+                                  );
+                                },
+                                childCount: conversationUsersList.length,
+                              ),
+                            ),
+                          ],
+
+                          // Empty State
+                          if (conversationUsersList.isEmpty)
+                            const SliverFillRemaining(
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.chat_bubble_outline,
+                                      size: 64,
+                                      color: Colors.grey,
+                                    ),
+                                    SizedBox(height: 16),
+                                    Text(
+                                      'No conversations yet',
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
-                                    SliverList(
-                                      delegate: SliverChildBuilderDelegate((
-                                        context,
-                                        index,
-                                      ) {
-                                        final user =
-                                            conversationUsersList[index];
-                                        final conversationKey =
-                                            _getConversationKey(
-                                              currentUserId!,
-                                              currentUserId,
-                                              user.id!,
-                                            );
-                                        final lastMessage =
-                                            lastMessages[conversationKey];
-                                        final unreadCount =
-                                            unreadCounts[conversationKey] ?? 0;
-
-                                        return ConversationTile(
-                                          user: user,
-                                          lastMessage: lastMessage,
-                                          currentUserId: currentUserId,
-                                          unreadCount: unreadCount,
-                                          onTap: () async {
-                                            final conversationId = await ref.read(
-                                              createOrGetPrivateConversationProvider(
-                                                user.id!,
-                                              ).future,
-                                            );
-
-                                            if (context.mounted) {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) => ChatScreen(
-                                                    senderId: currentUserId,
-                                                    otherUserName:
-                                                        user.displayName,
-                                                    otherUserAvatar:
-                                                        user.profilePictureUrl ??
-                                                        'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
-                                                    receiverId:
-                                                        user.id?.toString() ??
-                                                        '',
-                                                    conversationId:
-                                                        conversationId,
-                                                  ),
-                                                ),
-                                              );
-                                            }
-                                          },
-                                        );
-                                      }, childCount: conversationUsersList.length),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      'Go to Contacts tab to start a new chat',
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 14,
+                                      ),
                                     ),
                                   ],
-
-                                  // Empty State
-                                  if (conversationUsersList.isEmpty)
-                                    const SliverFillRemaining(
-                                      child: Center(
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Icon(
-                                              Icons.chat_bubble_outline,
-                                              size: 64,
-                                              color: Colors.grey,
-                                            ),
-                                            SizedBox(height: 16),
-                                            Text(
-                                              'No conversations yet',
-                                              style: TextStyle(
-                                                color: Colors.grey,
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                            SizedBox(height: 8),
-                                            Text(
-                                              'Go to Contacts tab to start a new chat',
-                                              style: TextStyle(
-                                                color: Colors.grey,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              );
-                            },
-                            loading: () => const Center(
-                              child: CircularProgressIndicator(),
+                                ),
+                              ),
                             ),
-                            error: (error, stackTrace) =>
-                                Center(child: Text('Error: $error')),
-                          );
-                        },
-                        loading: () =>
-                            const Center(child: CircularProgressIndicator()),
-                        error: (error, stackTrace) =>
-                            Center(child: Text('Error: $error')),
+                        ],
                       );
                     },
-                    loading: () =>
-                        const Center(child: CircularProgressIndicator()),
-                    error: (error, stackTrace) =>
-                        Center(child: Text('Error: $error')),
+                    loading: () => const Center(child: CircularProgressIndicator()),
+                    error: (error, stackTrace) => Center(child: Text('Error: $error')),
                   );
+                        },
+                        loading: () => const Center(child: CircularProgressIndicator()),
+                        error: (error, stackTrace) => Center(child: Text('Error: $error')),
+                      );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, stackTrace) =>
-                    Center(child: Text('Error: $error')),
-              ),
-            ),
+                error: (error, stackTrace) => Center(child: Text('Error: $error')),
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, stackTrace) => Center(child: Text('Error: $error')),
+          ),
+        ),
           ],
         ),
         // New Message Alert Overlay
@@ -379,6 +291,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
     );
   }
 }
+
 
 class ConversationTile extends StatelessWidget {
   final UserModel user;
@@ -405,9 +318,7 @@ class ConversationTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: hasUnreadMessages
-              ? const Color(0xFF1E3A5A)
-              : const Color(0xFF1E293B),
+          color: hasUnreadMessages ? const Color(0xFF1E3A5A) : const Color(0xFF1E293B),
           borderRadius: BorderRadius.circular(8),
           border: hasUnreadMessages
               ? Border.all(color: const Color(0xFF0D7FF2), width: 1)
@@ -497,13 +408,9 @@ class ConversationTile extends StatelessWidget {
                         child: Text(
                           user.displayName,
                           style: TextStyle(
-                            color: hasUnreadMessages
-                                ? Colors.white
-                                : const Color(0xFFD1D5DB),
+                            color: hasUnreadMessages ? Colors.white : const Color(0xFFD1D5DB),
                             fontSize: 16,
-                            fontWeight: hasUnreadMessages
-                                ? FontWeight.w600
-                                : FontWeight.w500,
+                            fontWeight: hasUnreadMessages ? FontWeight.w600 : FontWeight.w500,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -513,13 +420,9 @@ class ConversationTile extends StatelessWidget {
                         Text(
                           _formatMessageTime(lastMessage!.createdAt!),
                           style: TextStyle(
-                            color: hasUnreadMessages
-                                ? const Color(0xFF0D7FF2)
-                                : const Color(0xFF9CA3AF),
+                            color: hasUnreadMessages ? const Color(0xFF0D7FF2) : const Color(0xFF9CA3AF),
                             fontSize: 12,
-                            fontWeight: hasUnreadMessages
-                                ? FontWeight.w500
-                                : FontWeight.normal,
+                            fontWeight: hasUnreadMessages ? FontWeight.w500 : FontWeight.normal,
                           ),
                         ),
                     ],
@@ -531,13 +434,9 @@ class ConversationTile extends StatelessWidget {
                         child: Text(
                           _getLastMessageText(),
                           style: TextStyle(
-                            color: hasUnreadMessages
-                                ? Colors.white
-                                : const Color(0xFF9CA3AF),
+                            color: hasUnreadMessages ? Colors.white : const Color(0xFF9CA3AF),
                             fontSize: 14,
-                            fontWeight: hasUnreadMessages
-                                ? FontWeight.w500
-                                : FontWeight.normal,
+                            fontWeight: hasUnreadMessages ? FontWeight.w500 : FontWeight.normal,
                           ),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
