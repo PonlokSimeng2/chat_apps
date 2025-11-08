@@ -2,8 +2,10 @@ import 'dart:async';
 import '../model/message_model.dart';
 import '../model/message_status.dart';
 import '../provider/message_provider.dart';
+import '../provider/error_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../main.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final int conversationId;
@@ -32,41 +34,110 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    // Load messages and setup Realtime subscription
-    Future.microtask(
-      () => ref
-          .read(messageNotifierProvider.notifier)
-          .loadMessages(widget.conversationId, widget.receiverId),
-    );
+    try {
+      talker.info('Initializing ChatScreen for conversation: ${widget.conversationId}');
+      // Load messages and setup Realtime subscription
+      Future.microtask(
+        () => ref
+            .read(messageNotifierProvider.notifier)
+            .loadMessages(widget.conversationId, widget.receiverId),
+      );
+    } catch (e, st) {
+      talker.error('Error initializing ChatScreen', e, st);
+      // Add to visual error tracking
+      ref.read(errorProvider.notifier).addError(
+        'Failed to load chat messages',
+        details: e.toString(),
+        severity: ErrorSeverity.error,
+      );
+    }
   }
 
   void _sendMessage() {
-    if (_messageController.text.trim().isEmpty) return;
+    try {
+      if (_messageController.text.trim().isEmpty) {
+        talker.warning('Attempted to send empty message');
+        return;
+      }
 
-    // Send message - Realtime will handle updates automatically
-    ref
-        .read(messageNotifierProvider.notifier)
-        .sendMessage(
-          conversationId: widget.conversationId,
-          senderId: widget.senderId,
-          receiverId: widget.receiverId,
-          content: _messageController.text.trim(),
-        );
+      talker.info('Sending message: ${_messageController.text.trim()}');
 
-    _messageController.clear();
-    _scrollToBottom();
+      // Send message - Realtime will handle updates automatically
+      ref
+          .read(messageNotifierProvider.notifier)
+          .sendMessage(
+            conversationId: widget.conversationId,
+            senderId: widget.senderId,
+            receiverId: widget.receiverId,
+            content: _messageController.text.trim(),
+          );
+
+      _messageController.clear();
+      _scrollToBottom();
+    } catch (e, st) {
+      talker.error('Error sending message', e, st);
+      // Add to visual error tracking
+      ref.read(errorProvider.notifier).addError(
+        'Failed to send message',
+        details: e.toString(),
+        severity: ErrorSeverity.error,
+      );
+      // Show error to user
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error, color: Colors.white),
+              const SizedBox(width: 8),
+              const Text('Failed to send message'),
+              const Spacer(),
+              GestureDetector(
+                onTap: () {
+                  // Retry sending
+                  _sendMessage();
+                },
+                child: const Text(
+                  'RETRY',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          duration: const Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'RETRY',
+            textColor: Colors.white,
+            onPressed: () => _sendMessage(),
+          ),
+        ),
+      );
+    }
   }
 
   void _scrollToBottom() {
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
+    try {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    } catch (e, st) {
+      talker.error('Error scrolling to bottom', e, st);
+      // Add to visual error tracking (less severe)
+      ref.read(errorProvider.notifier).addError(
+        'Chat scrolling issue',
+        details: e.toString(),
+        severity: ErrorSeverity.warning,
+      );
+    }
   }
 
   @override
@@ -85,8 +156,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _,
       next,
     ) {
-      if (next is AsyncData) {
-        _scrollToBottom();
+      try {
+        if (next is AsyncData) {
+          talker.debug('New messages loaded: ${next.value?.length ?? 0} messages');
+          _scrollToBottom();
+        } else if (next is AsyncError) {
+          talker.error('Error in messages state', next.error, next.stackTrace);
+          // Add to visual error tracking
+          ref.read(errorProvider.notifier).addError(
+            'Failed to load messages',
+            details: next.error.toString(),
+            severity: ErrorSeverity.error,
+          );
+        }
+      } catch (e, st) {
+        talker.error('Error handling messages state change', e, st);
       }
     });
 
@@ -491,14 +575,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   // Helper method to mark all messages as read
   Future<void> _markAllAsRead(List<MessageModel> messages) async {
-    final messageNotifier = ref.read(messageNotifierProvider.notifier);
+    try {
+      talker.info('Marking all messages as read');
+      final messageNotifier = ref.read(messageNotifierProvider.notifier);
 
-    for (final message in messages) {
-      if (message.senderId != widget.senderId &&
-          message.isUnread &&
-          message.id != null) {
-        await messageNotifier.markAsRead(message.id!);
+      for (final message in messages) {
+        if (message.senderId != widget.senderId &&
+            message.isUnread &&
+            message.id != null) {
+          await messageNotifier.markAsRead(message.id!);
+        }
       }
+    } catch (e, st) {
+      talker.error('Error marking messages as read', e, st);
     }
   }
 }

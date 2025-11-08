@@ -1,9 +1,11 @@
 import 'package:chat_apps/page/chat_home_page.dart';
 import 'package:chat_apps/page/register_page.dart';
 import 'package:chat_apps/provider/auth_provider.dart';
+import 'package:chat_apps/provider/error_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../main.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -21,47 +23,86 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   void initState() {
     super.initState();
-    _loadSavedCredentials();
+    try {
+      talker.info('Initializing LoginPage');
+      _loadSavedCredentials();
+    } catch (e, st) {
+      talker.error('Error initializing LoginPage', e, st);
+      // Add to visual error tracking
+      ref.read(errorProvider.notifier).addError(
+        'Login page initialization failed',
+        details: e.toString(),
+        severity: ErrorSeverity.critical,
+      );
+    }
   }
+
   Future<void> _loadSavedCredentials() async {
-  final prefs = await SharedPreferences.getInstance();
-  final savePassword = prefs.getString('password');
-  final saveEmail = prefs.getString('email');
-  if( saveEmail != null && savePassword != null){
-    setState(() {
-      _emailController.text = saveEmail;
-      _passwordController.text = savePassword;
-    });
+    try {
+      talker.info('Loading saved credentials');
+      final prefs = await SharedPreferences.getInstance();
+      final savePassword = prefs.getString('password');
+      final saveEmail = prefs.getString('email');
+      if( saveEmail != null && savePassword != null){
+        setState(() {
+          _emailController.text = saveEmail;
+          _passwordController.text = savePassword;
+        });
+        talker.info('Loaded saved credentials for email: $saveEmail');
+      }
+    } catch (e, st) {
+      talker.error('Error loading saved credentials', e, st);
+      // Add to visual error tracking
+      ref.read(errorProvider.notifier).addError(
+        'Failed to load saved credentials',
+        details: e.toString(),
+        severity: ErrorSeverity.warning,
+      );
+    }
   }
-}
  Future<void> _saveCredentials() async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('email', _emailController.text);
-  await prefs.setString('password', _passwordController.text);
-  await prefs.setBool('isLoggedIn', true);
+  try {
+    talker.info('Saving credentials for user: ${_emailController.text}');
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('email', _emailController.text);
+    await prefs.setString('password', _passwordController.text);
+    await prefs.setBool('isLoggedIn', true);
+    talker.info('Credentials saved successfully');
+  } catch (e, st) {
+    talker.error('Error saving credentials', e, st);
+  }
 }
 
 @override
-void dispose() { 
+void dispose() {
+  try {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  } catch (e, st) {
+    talker.error('Error disposing login page', e, st);
   }
+}
 Future<void> _handleSubmit() async {
-  // Validate form
-  final formState = _formKey.currentState;
-  if (formState == null || !formState.validate()) {
-    return;
-  }
-
-  // Prevent multiple submissions
-  if (_isLoading) return;
-
-  setState(() {
-    _isLoading = true;
-  });
-
   try {
+    talker.info('Starting login submission');
+    // Validate form
+    final formState = _formKey.currentState;
+    if (formState == null || !formState.validate()) {
+      talker.warning('Form validation failed');
+      return;
+    }
+
+    // Prevent multiple submissions
+    if (_isLoading) {
+      talker.warning('Multiple login attempts prevented');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
     final errorMessage = await ref.read(authProvider.notifier).signIn(
       email: _emailController.text.trim(),
       password: _passwordController.text.trim(),
@@ -76,7 +117,7 @@ Future<void> _handleSubmit() async {
       Navigator.of(context).pushReplacement( // Use pushReplacement to prevent going back to login
         MaterialPageRoute(builder: (context) => const ChatHomePage()),
       );
-      
+
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -89,25 +130,63 @@ Future<void> _handleSubmit() async {
       );
     } else {
       // Show error message from signIn method
+      talker.error('Login failedsssssssssss: $errorMessage');
+      // Add to visual error tracking
+      ref.read(errorProvider.notifier).addError(
+        'Login failed',
+        details: errorMessage,
+        severity: ErrorSeverity.error,
+      );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(errorMessage),
-          backgroundColor: Colors.red,
+          content: Row(
+            children: [
+              const Icon(Icons.error, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(child: Text(errorMessage)),
+              const Icon(Icons.lock_open, color: Colors.white70),
+            ],
+          ),
+          backgroundColor: Colors.red.shade700,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          duration: const Duration(seconds: 4),
+          duration: const Duration(seconds: 6),
+          action: SnackBarAction(
+            label: 'RETRY',
+            textColor: Colors.white,
+            onPressed: () => _handleSubmit(),
+          ),
         ),
       );
     }
-  } catch (e) {
+  } catch (e, st) {
+    talker.error('Unexpected login error', e, st);
+    // Add to visual error tracking
+    ref.read(errorProvider.notifier).addError(
+      'Unexpected login error',
+      details: e.toString(),
+      severity: ErrorSeverity.critical,
+    );
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Unexpected error: $e'),
-          backgroundColor: Colors.red,
+          content: Row(
+            children: [
+              const Icon(Icons.dangerous, color: Colors.white),
+              const SizedBox(width: 12),
+              const Expanded(child: Text('An unexpected error occurred during login')),
+              const Icon(Icons.refresh, color: Colors.white70),
+            ],
+          ),
+          backgroundColor: Colors.red.shade900,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          duration: const Duration(seconds: 4),
+          duration: const Duration(seconds: 8),
+          action: SnackBarAction(
+            label: 'RETRY',
+            textColor: Colors.white,
+            onPressed: () => _handleSubmit(),
+          ),
         ),
       );
     }

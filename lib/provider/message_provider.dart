@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../model/message_model.dart';
 import '../model/message_status.dart';
 import '../model/user_model.dart';
+import '../main.dart';
 
 part 'message_provider.g.dart';
 
@@ -22,18 +23,17 @@ class MessageNotifier extends _$MessageNotifier {
   }
 
   void _setupRealtimeSubscription(int conversationId, String receiverId) {
-    // Remove existing subscription
-    _disconnectRealtime();
+    try {
+      // Remove existing subscription
+      _disconnectRealtime();
 
-    final currentUser = _client.auth.currentUser;
-    if (currentUser == null) {
-      print('User not authenticated for Realtime subscription');
-      return;
-    }
+      final currentUser = _client.auth.currentUser;
+      if (currentUser == null) {
+        talker.warning('User not authenticated for Realtime subscription');
+        return;
+      }
 
-    print(
-      'Realtime: 🔌 Setting up subscription for conversation $conversationId',
-    );
+      talker.info('Setting up Realtime subscription for conversation $conversationId');
 
     // Create a channel for this conversation
     _channel = _client.channel('messages:conversation:$conversationId');
@@ -86,19 +86,20 @@ class MessageNotifier extends _$MessageNotifier {
         )
         .subscribe((status, error) {
           if (status == RealtimeSubscribeStatus.subscribed) {
-            print(
-              'Realtime: ✅ Successfully subscribed to conversation $conversationId',
-            );
+            talker.info('Successfully subscribed to conversation $conversationId');
           } else if (status == RealtimeSubscribeStatus.timedOut) {
-            print('Realtime: ⏱️ Subscription timed out, retrying...');
+            talker.warning('Realtime subscription timed out, retrying...');
             // Retry subscription
             Future.delayed(const Duration(seconds: 2), () {
               _setupRealtimeSubscription(conversationId, receiverId);
             });
           } else if (status == RealtimeSubscribeStatus.channelError) {
-            print('Realtime: ❌ Channel error: $error');
+            talker.error('Realtime channel error', error);
           }
         });
+    } catch (e, st) {
+      talker.error('Error setting up realtime subscription', e, st);
+    }
   }
 
   void _handleInsert(PostgresChangePayload payload) {
@@ -107,11 +108,11 @@ class MessageNotifier extends _$MessageNotifier {
       if (newData.isEmpty) return;
 
       final newMessage = MessageModel.fromJson(newData);
-      print('Realtime: 📨 Adding new message from ${newMessage.senderId}');
+      talker.info('New message received from ${newMessage.senderId}');
 
       addMessage(newMessage);
-    } catch (e) {
-      print('Realtime: ❌ Error handling insert: $e');
+    } catch (e, st) {
+      talker.error('Error handling realtime insert', e, st);
     }
   }
 
@@ -121,11 +122,11 @@ class MessageNotifier extends _$MessageNotifier {
       if (newData.isEmpty) return;
 
       final updatedMessage = MessageModel.fromJson(newData);
-      print('Realtime: 🔄 Updating message ${updatedMessage.id}');
+      talker.info('Updating message ${updatedMessage.id}');
 
       updateMessage(updatedMessage);
-    } catch (e) {
-      print('Realtime: ❌ Error handling update: $e');
+    } catch (e, st) {
+      talker.error('Error handling realtime update', e, st);
     }
   }
 
@@ -136,19 +137,23 @@ class MessageNotifier extends _$MessageNotifier {
 
       final messageId = oldData['id'] as int?;
       if (messageId != null) {
-        print('Realtime: 🗑️ Deleting message $messageId');
+        talker.info('Deleting message $messageId');
         deleteMessage(messageId);
       }
-    } catch (e) {
-      print('Realtime: ❌ Error handling delete: $e');
+    } catch (e, st) {
+      talker.error('Error handling realtime delete', e, st);
     }
   }
 
   void _disconnectRealtime() {
-    if (_channel != null) {
-      print('Realtime: 🔌 Disconnecting from channel');
-      _client.removeChannel(_channel!);
-      _channel = null;
+    try {
+      if (_channel != null) {
+        talker.info('Disconnecting from realtime channel');
+        _client.removeChannel(_channel!);
+        _channel = null;
+      }
+    } catch (e, st) {
+      talker.error('Error disconnecting realtime channel', e, st);
     }
   }
 
@@ -156,6 +161,8 @@ class MessageNotifier extends _$MessageNotifier {
     state = const AsyncValue.loading();
 
     try {
+      talker.info('Loading messages for conversation $conversationId');
+
       final response = await _client
           .from('messages')
           .select()
@@ -167,11 +174,13 @@ class MessageNotifier extends _$MessageNotifier {
           .map((json) => MessageModel.fromJson(json))
           .toList();
 
+      talker.info('Loaded ${messages.length} messages for conversation $conversationId');
       state = AsyncValue.data(messages);
 
       // Setup Realtime subscription
       _setupRealtimeSubscription(conversationId, receiverId);
     } catch (e, stack) {
+      talker.error('Error loading messages for conversation $conversationId', e, stack);
       state = AsyncValue.error(e, stack);
     }
   }

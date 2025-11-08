@@ -63,7 +63,7 @@ final getUnreadMessageCountsProvider =
 // ignore: unused_element
 typedef GetUnreadMessageCountsRef =
     AutoDisposeStreamProviderRef<Map<String, int>>;
-String _$messageNotifierHash() => r'fc7ab58c579ba193892194e5ff5c2bdece2f421a';
+String _$messageNotifierHash() => r'd7cbd9add1a9daca9bd2a316a96b7ece03d58cda';
 
 /// See also [MessageNotifier].
 @ProviderFor(MessageNotifier)

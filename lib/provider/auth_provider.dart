@@ -2,6 +2,7 @@ import 'dart:developer';
 import 'package:chat_apps/provider/supabase_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../main.dart';
 
 part 'auth_provider.g.dart';
 
@@ -21,6 +22,7 @@ class Auth extends _$Auth {
     required String displayName,
   }) async {
     try {
+      talker.info('Starting signup process for email: $email');
       final supabase = ref.read(supabaseProvider);
 
       // Check if username exists
@@ -31,6 +33,7 @@ class Auth extends _$Auth {
           .maybeSingle();
 
       if (existingUsername != null) {
+        talker.warning('Username already taken: $username');
         return "Username already taken";
       }
 
@@ -42,6 +45,7 @@ class Auth extends _$Auth {
 
       if (authResult.user != null) {
         final userId = authResult.user!.id;
+        talker.info('Created auth user with ID: $userId');
 
         // Create user record - MUST match your table columns
         final userRecord = {
@@ -58,6 +62,7 @@ class Auth extends _$Auth {
         };
 
         await supabase.client.from('users').insert(userRecord);
+        talker.info('Created user record for: $username');
 
         // Auto-login
         final signInResult = await supabase.client.auth.signInWithPassword(
@@ -67,12 +72,14 @@ class Auth extends _$Auth {
 
         if (signInResult.user != null) {
           state = signInResult.user!.id;
+          talker.info('Auto-login successful for: $username');
           return null; // Success
         }
       }
 
       return "Registration failed";
-    } catch (e) {
+    } catch (e, st) {
+      talker.error('Signup error', e, st);
       log("Signup error: $e");
       return "Registration failed. Please try again.";
     }
@@ -83,6 +90,7 @@ class Auth extends _$Auth {
     required String password,
   }) async {
     try {
+      talker.info('Starting sign in process for email: $email');
       final supabase = ref.read(supabaseProvider);
 
       final result = await supabase.client.auth.signInWithPassword(
@@ -101,17 +109,22 @@ class Auth extends _$Auth {
                 'updated_at': DateTime.now().toIso8601String(),
               })
               .eq('id', result.user!.id);
+          talker.info('Updated online status for user: ${result.user!.id}');
         } catch (updateError) {
+          talker.error('Error updating online status', updateError);
           log("Error updating online status: $updateError");
           // Don't fail the login just because we couldn't update online status
         }
 
         state = result.user!.id;
+        talker.info('Sign in successful for user: ${result.user!.id}');
         return null; // Success - moved inside the success condition
       } else {
+        talker.warning('Sign in failed: No user returned');
         return "Login failed: No user returned";
       }
-    } catch (e) {
+    } catch (e, st) {
+      talker.error('Sign in error', e, st);
       log("Error sign in: $e");
 
       if (e.toString().contains('Invalid login credentials')) {
