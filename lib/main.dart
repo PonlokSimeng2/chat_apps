@@ -8,8 +8,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:talker_flutter/talker_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 
-// Enhanced Talker with custom logging methods and colors
 class ColoredTalker {
   static const reset = '\x1B[0m';
 
@@ -38,7 +40,11 @@ class ColoredTalker {
     talker.error(message, error, stackTrace);
   }
 
-  static void critical(String message, [Object? error, StackTrace? stackTrace]) {
+  static void critical(
+    String message, [
+    Object? error,
+    StackTrace? stackTrace,
+  ]) {
     print('$boldRed🚨 CRITICAL: $message$reset');
     if (error != null) print('$boldRed  Details: $error$reset');
     if (stackTrace != null) print('$boldRed  Stack: $stackTrace$reset');
@@ -59,15 +65,19 @@ class ColoredTalker {
 
 // Configure Talker with basic settings
 final talker = Talker(
-  settings: TalkerSettings(
-    enabled: true,
-    useConsoleLogs: true,
-  ),
+  settings: TalkerSettings(enabled: true, useConsoleLogs: true),
 );
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Enable verbose logging for debugging (remove in production)
+  OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
+  // Initialize with your OneSignal App ID
+  OneSignal.initialize("9a5ddfd5-fe71-4dac-99c9-5d0801040829");
+  // Use this method to prompt for push notifications.
+  // We recommend removing this method after testing and instead use In-App Messages to prompt for notification permission.
+  OneSignal.Notifications.requestPermission(false);
   try {
     final prefs = await SharedPreferences.getInstance();
     await initSupabase();
@@ -127,10 +137,7 @@ class MyApp extends StatelessWidget {
         home: isLoggedIn ? const ChatHomePage() : const LoginPage(),
         builder: (context, child) {
           return ResponsiveBreakpoints.builder(
-            child: TalkerWrapper(
-              talker: talker,
-              child: child!,
-            ),
+            child: TalkerWrapper(talker: talker, child: child!),
             breakpoints: [
               const Breakpoint(start: 0, end: 450, name: MOBILE),
               const Breakpoint(start: 451, end: 800, name: TABLET),
