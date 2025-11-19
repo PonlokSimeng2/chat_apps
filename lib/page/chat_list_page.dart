@@ -5,6 +5,7 @@ import 'package:chat_apps/model/user_model.dart';
 import 'package:chat_apps/model/message_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:chat_apps/utils/responsive_helper.dart';
 
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -41,85 +42,103 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
     final currentUser = ref.watch(currentUserProvider);
    // final newMessageAlert = ref.watch(newMessageAlertProvider);
 
+    // Use ResponsiveHelper for responsive calculations
+    final headerPadding = ResponsiveHelper.getPadding(context);
+    final avatarSize = ResponsiveHelper.getSmallAvatarSize(context);
+    final titleFontSize = ResponsiveHelper.getHeadingFontSize(context);
+    final searchHeight = ResponsiveHelper.getSearchBarHeight(context);
+    final searchHorizontalPadding = ResponsiveHelper.getPadding(context);
+    final searchBorderRadius = ResponsiveHelper.getBorderRadius(context) * 1.5;
+    final searchFontSize = ResponsiveHelper.getSubtitleFontSize(context);
+
     return Stack(
       children: [
         Column(
           children: [
             // Header
             Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  image: const DecorationImage(
-                    image: NetworkImage(
-                      'https://lh3.googleusercontent.com/aida-public/AB6AXuBpEN6dfbSeC6GJfwBfgdExi8xM_e-PYrwfawXMDgbQDDaKbP9PzGHGz7DKuCcyFy00ljTbUAkf4Xdc6LHXgyiKB7ZCpBuT_XXNAR6uNfsoYeQLrPwKK6tTSK0We2htGRqGH79Bq0mUZnvu1-52ZJV26ORS4Lk2xvAmXvksK-a6b0p3sIPVrjHb_Wf1tbiAG_gYdyKJHI45FoK5KZv3YEo76U6mx-xwckcJ2PxS6ku7wwUmHWWjqV2-yvPMWHS1jX0SIsmsabt-iUPn',
+              padding: EdgeInsets.all(headerPadding),
+              child: Row(
+                children: [
+                  Container(
+                    width: avatarSize,
+                    height: avatarSize,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(avatarSize / 2),
+                      image: const DecorationImage(
+                        image: NetworkImage(
+                          'https://lh3.googleusercontent.com/aida-public/AB6AXuBpEN6dfbSeC6GJfwBfgdExi8xM_e-PYrwfawXMDgbQDDaKbP9PzGHGz7DKuCcyFy00ljTbUAkf4Xdc6LHXgyiKB7ZCpBuT_XXNAR6uNfsoYeQLrPwKK6tTSK0We2htGRqGH79Bq0mUZnvu1-52ZJV26ORS4Lk2xvAmXvksK-a6b0p3sIPVrjHb_Wf1tbiAG_gYdyKJHI45FoK5KZv3YEo76U6mx-xwckcJ2PxS6ku7wwUmHWWjqV2-yvPMWHS1jX0SIsmsabt-iUPn',
+                        ),
+                        fit: BoxFit.cover,
+                      ),
                     ),
-                    fit: BoxFit.cover,
                   ),
-                ),
-              ),
-              const Expanded(
-                child: Text(
-                  'Chats',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Text(
+                      'Chats',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: titleFontSize,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
-                  textAlign: TextAlign.center,
-                ),
+                  Container(
+                    width: avatarSize,
+                    height: avatarSize,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF374151),
+                      borderRadius: BorderRadius.circular(avatarSize / 2),
+                    ),
+                    child: Icon(Icons.chat, color: Colors.white, size: avatarSize * 0.5),
+                  ),
+                ],
               ),
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF374151),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Icon(Icons.chat, color: Colors.white, size: 20),
-              ),
-            ],
-          ),
-        ),
+            ),
 
-        // Search Bar
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Container(
-            height: 48,
-            decoration: BoxDecoration(
-              color: const Color(0xFF1F2937),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Row(
-              children: [
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0),
-                  child: Icon(Icons.search, color: Colors.grey),
+            // Search Bar
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: searchHorizontalPadding),
+              child: Container(
+                height: searchHeight,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1F2937),
+                  borderRadius: BorderRadius.circular(searchBorderRadius),
                 ),
-                Expanded(
-                  child: TextField(
-                    onChanged: (value) {
-                      ref.read(searchQueryProvider.notifier).state = value;
-                    },
-                    decoration: const InputDecoration(
-                      hintText: 'Search',
-                      hintStyle: TextStyle(color: Colors.grey),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.only(left: searchHorizontalPadding),
+                      child: Icon(Icons.search, color: Colors.grey, size: searchHeight * 0.4),
                     ),
-                    style: const TextStyle(color: Colors.white),
-                  ),
+                    Expanded(
+                      child: TextField(
+                        onChanged: (value) {
+                          ref.read(searchQueryProvider.notifier).state = value;
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'Search',
+                          hintStyle: TextStyle(
+                            color: Colors.grey,
+                            fontSize: searchFontSize,
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: searchHorizontalPadding * 0.5,
+                            vertical: searchHeight * 0.1,
+                          ),
+                        ),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: searchFontSize,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
 
         const SizedBox(height: 16),
 
@@ -313,10 +332,19 @@ class ConversationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasUnreadMessages = unreadCount > 0;
 
+    // Use ResponsiveHelper for responsive sizing
+    final avatarSize = ResponsiveHelper.getAvatarSize(context);
+    final horizontalPadding = ResponsiveHelper.getListTilePadding(context);
+    final verticalPadding = ResponsiveHelper.getListTileVerticalPadding(context);
+    final fontSizeName = ResponsiveHelper.getTitleFontSize(context);
+    final fontSizeMessage = ResponsiveHelper.getSubtitleFontSize(context);
+    final fontSizeTime = ResponsiveHelper.getCaptionFontSize(context);
+
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
+        margin: EdgeInsets.symmetric(horizontal: ResponsiveHelper.isDesktop(context) ? 8.0 : 0, vertical: 2.0),
         decoration: BoxDecoration(
           color: hasUnreadMessages ? const Color(0xFF1E3A5A) : const Color(0xFF1E293B),
           borderRadius: BorderRadius.circular(8),
@@ -330,10 +358,10 @@ class ConversationTile extends StatelessWidget {
             Stack(
               children: [
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: avatarSize,
+                  height: avatarSize,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(28),
+                    borderRadius: BorderRadius.circular(avatarSize / 2),
                     image: DecorationImage(
                       image: NetworkImage(
                         user.profilePictureUrl ??
@@ -348,13 +376,13 @@ class ConversationTile extends StatelessWidget {
                   right: 0,
                   bottom: 0,
                   child: Container(
-                    width: 16,
-                    height: 16,
+                    width: avatarSize * 0.285,
+                    height: avatarSize * 0.285,
                     decoration: BoxDecoration(
                       color: user.isOnline == true
                           ? const Color(0xFF10B981)
                           : Colors.grey,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(avatarSize * 0.143),
                       border: Border.all(
                         color: const Color(0xFF111827),
                         width: 2,
@@ -368,13 +396,13 @@ class ConversationTile extends StatelessWidget {
                     right: 0,
                     top: 0,
                     child: Container(
-                      constraints: const BoxConstraints(
-                        minWidth: 22,
-                        minHeight: 22,
+                      constraints: BoxConstraints(
+                        minWidth: avatarSize * 0.39,
+                        minHeight: avatarSize * 0.39,
                       ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF0D7FF2),
-                        borderRadius: BorderRadius.circular(11),
+                        borderRadius: BorderRadius.circular(avatarSize * 0.196),
                         border: Border.all(
                           color: const Color(0xFF111827),
                           width: 2,
@@ -383,9 +411,9 @@ class ConversationTile extends StatelessWidget {
                       child: Center(
                         child: Text(
                           unreadCount > 99 ? '99+' : unreadCount.toString(),
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
-                            fontSize: 10,
+                            fontSize: avatarSize * 0.179,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -395,7 +423,7 @@ class ConversationTile extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(width: 16),
+            SizedBox(width: ResponsiveHelper.isDesktop(context) ? 20 : 16),
 
             // Chat info
             Expanded(
@@ -409,7 +437,7 @@ class ConversationTile extends StatelessWidget {
                           user.displayName,
                           style: TextStyle(
                             color: hasUnreadMessages ? Colors.white : const Color(0xFFD1D5DB),
-                            fontSize: 16,
+                            fontSize: fontSizeName,
                             fontWeight: hasUnreadMessages ? FontWeight.w600 : FontWeight.w500,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -421,13 +449,13 @@ class ConversationTile extends StatelessWidget {
                           _formatMessageTime(lastMessage!.createdAt!),
                           style: TextStyle(
                             color: hasUnreadMessages ? const Color(0xFF0D7FF2) : const Color(0xFF9CA3AF),
-                            fontSize: 12,
+                            fontSize: fontSizeTime,
                             fontWeight: hasUnreadMessages ? FontWeight.w500 : FontWeight.normal,
                           ),
                         ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: ResponsiveHelper.isDesktop(context) ? 6 : 4),
                   Row(
                     children: [
                       Expanded(
@@ -435,11 +463,11 @@ class ConversationTile extends StatelessWidget {
                           _getLastMessageText(),
                           style: TextStyle(
                             color: hasUnreadMessages ? Colors.white : const Color(0xFF9CA3AF),
-                            fontSize: 14,
+                            fontSize: fontSizeMessage,
                             fontWeight: hasUnreadMessages ? FontWeight.w500 : FontWeight.normal,
                           ),
                           overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
+                          maxLines: ResponsiveHelper.isDesktop(context) ? 2 : 1,
                         ),
                       ),
                       // Message status indicator
@@ -451,7 +479,7 @@ class ConversationTile extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(width: 8),
+            SizedBox(width: ResponsiveHelper.isDesktop(context) ? 12 : 8),
 
             // Chat icon
             // Container(
