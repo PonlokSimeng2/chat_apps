@@ -19,7 +19,7 @@ declare
   message_body text;
   payload jsonb;
   onesignal_app_id text := '9a5ddfd5-fe71-4dac-99c9-5d0801040829';
-  onesignal_api_key text := 'os_v2_app_tjo57vp6ofg2zgojlueacbaifg2z37wymlmua7u4cr2hyene73llznhtlotvfdlrz2nxcqwcuouwfkdolvb5qntzyfsx4m35cjyfrfa';
+  onesignal_api_key text := 'os_v2_app_tjo57vp6ofg2zgojlueacbaifgicwg5fhlluwc46k6rkdbgqoikagkfa5eqnrx24ksyuifutgldl7utcck5jfdv6glejwmgu3vyzuoi';
 begin
   if NEW.is_deleted or NEW.sender_id = NEW.receiver_id then
     return NEW;
