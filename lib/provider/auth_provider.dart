@@ -1,5 +1,6 @@
 import 'dart:developer';
 import 'package:chat_apps/provider/supabase_provider.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../main.dart';
@@ -8,10 +9,14 @@ part 'auth_provider.g.dart';
 
 @Riverpod(keepAlive: true)
 class Auth extends _$Auth {
+  String? _lastOneSignalUserId;
+  bool _oneSignalObserverRegistered = false;
+
   @override
   String? build() {
     final session = ref.watch(supabaseProvider).client.auth.currentSession;
     if (session == null) return null;
+    _queueOneSignalSync(session.user.id);
     return session.user.id;
   }
 
@@ -72,6 +77,7 @@ class Auth extends _$Auth {
 
         if (signInResult.user != null) {
           state = signInResult.user!.id;
+          _queueOneSignalSync(signInResult.user!.id);
           talker.info('Auto-login successful for: $username');
           return null; // Success
         }
@@ -117,6 +123,7 @@ class Auth extends _$Auth {
         }
 
         state = result.user!.id;
+        _queueOneSignalSync(result.user!.id);
         talker.info('Sign in successful for user: ${result.user!.id}');
         return null; // Success - moved inside the success condition
       } else {
@@ -139,6 +146,7 @@ class Auth extends _$Auth {
 
   Future<void> signOut() async {
     await ref.read(supabaseProvider).client.auth.signOut();
+    OneSignal.logout();
     ref.invalidateSelf();
   }
 
@@ -229,4 +237,68 @@ class Auth extends _$Auth {
 
   // Get current user ID
   String? get currentUserId => state;
+
+  void _queueOneSignalSync(String userId) {
+    if (_lastOneSignalUserId == userId) return;
+    _lastOneSignalUserId = userId;
+    Future.microtask(() => _syncOneSignalSubscriptionId(userId));
+  }
+
+  Future<void> _syncOneSignalSubscriptionId(String userId) async {
+    final supabase = ref.read(supabaseProvider).client;
+    try {
+      OneSignal.login(userId);
+    } catch (e, st) {
+      talker.warning('OneSignal login failed', e, st);
+    }
+
+    final permissionGranted =
+        await OneSignal.Notifications.requestPermission(true);
+    if (!permissionGranted) {
+      talker.warning('Notifications permission not granted');
+    }
+
+    String? subId = OneSignal.User.pushSubscription.id;
+    if (subId == null || subId.isEmpty) {
+      await Future.delayed(const Duration(seconds: 2));
+      subId = OneSignal.User.pushSubscription.id;
+    }
+    if (subId != null && subId.isNotEmpty) {
+      await _updateOneSignalSubscriptionId(supabase, userId, subId);
+      return;
+    }
+
+    if (_oneSignalObserverRegistered) return;
+    _oneSignalObserverRegistered = true;
+    OneSignal.User.pushSubscription.addObserver((state) async {
+      final currentUserId = supabase.auth.currentUser?.id;
+      final currentSubId = state.current.id;
+      if (currentUserId == null ||
+          currentSubId == null ||
+          currentSubId.isEmpty) {
+        return;
+      }
+      await _updateOneSignalSubscriptionId(
+        supabase,
+        currentUserId,
+        currentSubId,
+      );
+    });
+  }
+
+  Future<void> _updateOneSignalSubscriptionId(
+    SupabaseClient client,
+    String userId,
+    String subId,
+  ) async {
+    try {
+      await client
+          .from('users')
+          .update({'onesignal_subscription_id': subId})
+          .eq('id', userId);
+      talker.info('Saved OneSignal subscription id for user: $userId');
+    } catch (e, st) {
+      talker.error('Failed to save OneSignal subscription id', e, st);
+    }
+  }
 }

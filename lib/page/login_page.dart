@@ -4,6 +4,7 @@ import 'package:chat_apps/provider/auth_provider.dart';
 import 'package:chat_apps/provider/error_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
 
@@ -205,6 +206,7 @@ Future<void> _handleSubmit() async {
       MaterialPageRoute(builder: (context) => const RegisterPage()),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
