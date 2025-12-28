@@ -6,12 +6,12 @@ part of 'message_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$conversationUsersHash() => r'44c35f4525f2127af83ac777311fe20177d0b110';
+String _$conversationUsersHash() => r'd8f7c137c1b43f598b49ee7f1b2f630310a265fa';
 
 /// See also [conversationUsers].
 @ProviderFor(conversationUsers)
 final conversationUsersProvider =
-    AutoDisposeFutureProvider<List<UserModel>>.internal(
+    AutoDisposeStreamProvider<List<UserModel>>.internal(
       conversationUsers,
       name: r'conversationUsersProvider',
       debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -23,7 +23,7 @@ final conversationUsersProvider =
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef ConversationUsersRef = AutoDisposeFutureProviderRef<List<UserModel>>;
+typedef ConversationUsersRef = AutoDisposeStreamProviderRef<List<UserModel>>;
 String _$getLastMessagesHash() => r'7d39343fcb2752404ce76235e71d0cc77b615ed8';
 
 /// See also [getLastMessages].

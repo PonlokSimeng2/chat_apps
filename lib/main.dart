@@ -11,6 +11,7 @@ import 'package:talker_flutter/talker_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ColoredTalker {
   static const reset = '\x1B[0m';
@@ -111,14 +112,61 @@ void main() async {
   }
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key, required this.prefs});
   final SharedPreferences prefs;
 
   @override
+  ConsumerState<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _updateOnlineStatus(true);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _updateOnlineStatus(true);
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        _updateOnlineStatus(false);
+        break;
+    }
+  }
+
+  Future<void> _updateOnlineStatus(bool isOnline) async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+    try {
+      await Supabase.instance.client.from('users').update({
+        'is_online': isOnline,
+        'updated_at': DateTime.now().toIso8601String(),
+        if (!isOnline) 'last_seen_at': DateTime.now().toIso8601String(),
+      }).eq('id', userId);
+    } catch (e, st) {
+      talker.warning('Failed to update online status from app lifecycle', e, st);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     try {
-      final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+      final isLoggedIn = widget.prefs.getBool('isLoggedIn') ?? false;
 
       ColoredTalker.info('Building app with login status: $isLoggedIn');
 

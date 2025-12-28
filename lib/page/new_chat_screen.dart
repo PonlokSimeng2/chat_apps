@@ -211,7 +211,9 @@ class UserTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    user.isOnline == true ? 'Online' : 'Offline',
+                    user.isOnline == true
+                        ? 'Online'
+                        : _formatLastSeen(user.lastSeenAt),
                     style: TextStyle(
                       color: user.isOnline == true
                           ? const Color(0xFF10B981)
@@ -238,5 +240,25 @@ class UserTile extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _formatLastSeen(DateTime? lastSeenAt) {
+    if (lastSeenAt == null) return 'Offline';
+    Duration difference =
+        DateTime.now().toUtc().difference(lastSeenAt.toUtc());
+    if (difference.isNegative) {
+      difference = difference.abs();
+    }
+    if (difference.inMinutes < 1) {
+      return 'last seen now';
+    } else if (difference.inHours < 1) {
+      return 'last seen ${difference.inMinutes}m';
+    } else if (difference.inDays < 1) {
+      return 'last seen ${difference.inHours}h';
+    } else if (difference.inDays < 7) {
+      return 'last seen ${difference.inDays}d';
+    } else {
+      return 'last seen ${lastSeenAt.day}/${lastSeenAt.month}';
+    }
   }
 }

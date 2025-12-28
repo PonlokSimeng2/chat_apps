@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:chat_apps/page/chat_screen.dart';
 import 'package:chat_apps/provider/user_provider.dart';
 import 'package:chat_apps/provider/message_provider.dart';
@@ -23,13 +24,21 @@ class ChatListScreen extends ConsumerStatefulWidget {
 }
 
 class _ChatListScreenState extends ConsumerState<ChatListScreen> {
+  Timer? _ticker;
+
   @override
   void initState() {
     super.initState();
+    _ticker = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
   }
 
   @override
   void dispose() {
+    _ticker?.cancel();
     super.dispose();
   }
 
@@ -375,20 +384,43 @@ class ConversationTile extends StatelessWidget {
                 Positioned(
                   right: 0,
                   bottom: 0,
-                  child: Container(
-                    width: avatarSize * 0.285,
-                    height: avatarSize * 0.285,
-                    decoration: BoxDecoration(
-                      color: user.isOnline == true
-                          ? const Color(0xFF10B981)
-                          : Colors.grey,
-                      borderRadius: BorderRadius.circular(avatarSize * 0.143),
-                      border: Border.all(
-                        color: const Color(0xFF111827),
-                        width: 2,
-                      ),
-                    ),
-                  ),
+                  child: user.isOnline == true
+                      ? Container(
+                          width: avatarSize * 0.285,
+                          height: avatarSize * 0.285,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981),
+                            borderRadius:
+                                BorderRadius.circular(avatarSize * 0.143),
+                            border: Border.all(
+                              color: const Color(0xFF111827),
+                              width: 2,
+                            ),
+                          ),
+                        )
+                      : Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: avatarSize * 0.12,
+                            vertical: avatarSize * 0.04,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade800,
+                            borderRadius:
+                                BorderRadius.circular(avatarSize * 0.14),
+                            border: Border.all(
+                              color: const Color(0xFF111827),
+                              width: 2,
+                            ),
+                          ),
+                          child: Text(
+                            _formatLastSeenShort(user.lastSeenAt),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: avatarSize * 0.14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                 ),
                 // Unread count badge
                 if (hasUnreadMessages)
@@ -473,6 +505,17 @@ class ConversationTile extends StatelessWidget {
                       // Message status indicator
                       if (lastMessage?.senderId == currentUserId)
                         _buildMessageStatusIndicator(),
+                      if (user.isOnline != true && user.lastSeenAt != null) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          _formatLastSeenShort(user.lastSeenAt),
+                          style: TextStyle(
+                            color: const Color(0xFF9CA3AF),
+                            fontSize: fontSizeTime,
+                            fontWeight: FontWeight.normal,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ],
@@ -534,6 +577,26 @@ class ConversationTile extends StatelessWidget {
       return '${difference.inDays}d';
     } else {
       return '${messageTime.day}/${messageTime.month}';
+    }
+  }
+
+  String _formatLastSeenShort(DateTime? lastSeenAt) {
+    if (lastSeenAt == null) return '';
+    Duration difference =
+        DateTime.now().toUtc().difference(lastSeenAt.toUtc());
+    if (difference.isNegative) {
+      difference = difference.abs();
+    }
+    if (difference.inMinutes < 1) {
+      return '1m';
+    } else if (difference.inHours < 1) {
+      return '${difference.inMinutes}m';
+    } else if (difference.inDays < 1) {
+      return '${difference.inHours}h';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}d';
+    } else {
+      return '${lastSeenAt.day}/${lastSeenAt.month}';
     }
   }
 }

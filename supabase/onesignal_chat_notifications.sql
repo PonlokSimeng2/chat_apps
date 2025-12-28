@@ -14,11 +14,12 @@ set search_path = public
 as $$
 declare
   receiver_sub_id text;
+  receiver_is_online boolean;
   sender_name text;
   message_body text;
   payload jsonb;
   onesignal_app_id text := '9a5ddfd5-fe71-4dac-99c9-5d0801040829';
-  onesignal_api_key text := 'os_v2_app_tjo57vp6ofg2zgojlueacbaiffjadekxfgrekznl2gmm27kqwqr537xk6d2dro6qr6krhpbmxpy7octwsxajvfmvfieu3iwn4l4fkqa';
+  onesignal_api_key text := 'os_v2_app_tjo57vp6ofg2zgojlueacbaifg2z37wymlmua7u4cr2hyene73llznhtlotvfdlrz2nxcqwcuouwfkdolvb5qntzyfsx4m35cjyfrfa';
 begin
   if NEW.is_deleted or NEW.sender_id = NEW.receiver_id then
     return NEW;
@@ -28,10 +29,16 @@ begin
     return NEW;
   end if;
 
-  select u.onesignal_subscription_id
-    into receiver_sub_id
+  select u.onesignal_subscription_id,
+         u.is_online
+    into receiver_sub_id,
+         receiver_is_online
   from public.users u
   where u.id = NEW.receiver_id;
+
+  if coalesce(receiver_is_online, false) then
+    return NEW;
+  end if;
 
   if receiver_sub_id is null or receiver_sub_id = '' then
     return NEW;

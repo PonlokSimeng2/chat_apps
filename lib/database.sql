@@ -8,7 +8,7 @@ CREATE TABLE public.users (
   phone_number VARCHAR(20) UNIQUE,
   bio TEXT,
   is_online BOOLEAN DEFAULT false,
-  last_seen_at TIMESTAMPTZ,
+  last_seen_at TIMESTAMP,
   status VARCHAR(10) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended')),
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()

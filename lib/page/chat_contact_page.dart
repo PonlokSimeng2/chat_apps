@@ -280,13 +280,17 @@ class ContactTile extends StatelessWidget {
                         width: 8,
                         height: 8,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF10B981),
+                          color: user.isOnline == true
+                              ? const Color(0xFF10B981)
+                              : Colors.grey,
                           shape: BoxShape.circle,
                         ),
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        user.isOnline == true ? 'Available to chat' : 'Offline',
+                        user.isOnline == true
+                            ? 'Available to chat'
+                            : _formatLastSeen(user.lastSeenAt),
                         style: TextStyle(
                           color: user.isOnline == true
                               ? const Color(0xFF10B981)
@@ -329,5 +333,25 @@ class ContactTile extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _formatLastSeen(DateTime? lastSeenAt) {
+    if (lastSeenAt == null) return 'Offline';
+    Duration difference =
+        DateTime.now().toUtc().difference(lastSeenAt.toUtc());
+    if (difference.isNegative) {
+      difference = difference.abs();
+    }
+    if (difference.inMinutes < 1) {
+      return 'last seen now';
+    } else if (difference.inHours < 1) {
+      return 'last seen ${difference.inMinutes}m';
+    } else if (difference.inDays < 1) {
+      return 'last seen ${difference.inHours}h';
+    } else if (difference.inDays < 7) {
+      return 'last seen ${difference.inDays}d';
+    } else {
+      return 'last seen ${lastSeenAt.day}/${lastSeenAt.month}';
+    }
   }
 }

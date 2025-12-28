@@ -276,6 +276,17 @@ class _ChatListItemPageState extends ConsumerState<ChatListItemPage> {
                       // Message status indicator for sent messages
                       if (_lastMessage != null && _lastMessage!.senderId == widget.currentUserId)
                         _buildMessageStatusIndicator(),
+                      if (widget.user.isOnline != true &&
+                          widget.user.lastSeenAt != null) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          _formatLastSeenShort(widget.user.lastSeenAt),
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ],
@@ -357,6 +368,26 @@ class _ChatListItemPageState extends ConsumerState<ChatListItemPage> {
       return '${difference.inDays}d';
     } else {
       return '${messageTime.day}/${messageTime.month}';
+    }
+  }
+
+  String _formatLastSeenShort(DateTime? lastSeenAt) {
+    if (lastSeenAt == null) return '';
+    Duration difference =
+        DateTime.now().toUtc().difference(lastSeenAt.toUtc());
+    if (difference.isNegative) {
+      difference = difference.abs();
+    }
+    if (difference.inMinutes < 1) {
+      return 'now';
+    } else if (difference.inHours < 1) {
+      return '${difference.inMinutes}m';
+    } else if (difference.inDays < 1) {
+      return '${difference.inHours}h';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}d';
+    } else {
+      return '${lastSeenAt.day}/${lastSeenAt.month}';
     }
   }
 }

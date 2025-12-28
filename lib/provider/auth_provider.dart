@@ -145,7 +145,21 @@ class Auth extends _$Auth {
   }
 
   Future<void> signOut() async {
-    await ref.read(supabaseProvider).client.auth.signOut();
+    final supabase = ref.read(supabaseProvider).client;
+    final userId = supabase.auth.currentUser?.id;
+    if (userId != null) {
+      try {
+        await supabase.from('users').update({
+          'is_online': false,
+          'last_seen_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', userId);
+      } catch (e, st) {
+        talker.warning('Failed to update online status on sign out', e, st);
+      }
+    }
+
+    await supabase.auth.signOut();
     OneSignal.logout();
     ref.invalidateSelf();
   }

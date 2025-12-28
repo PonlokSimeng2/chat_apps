@@ -523,45 +523,96 @@ class MessagePagination extends _$MessagePagination {
 }
 
 // Chat List StreamProviders
+Future<List<UserModel>> _fetchConversationUsers(
+  SupabaseClient supabase,
+  String currentUserId,
+) async {
+  // Get unique users that current user has sent messages to or received messages from
+  final response = await supabase
+      .from('messages')
+      .select('sender_id, receiver_id')
+      .or('sender_id.eq.$currentUserId,receiver_id.eq.$currentUserId')
+      .neq('is_deleted', true);
+
+  final Set<String> conversationUserIds = {};
+  for (final message in response as List) {
+    final senderId = message['sender_id'] as String?;
+    final receiverId = message['receiver_id'] as String?;
+
+    if (senderId != null && senderId != currentUserId) {
+      conversationUserIds.add(senderId);
+    }
+    if (receiverId != null && receiverId != currentUserId) {
+      conversationUserIds.add(receiverId);
+    }
+  }
+
+  if (conversationUserIds.isEmpty) return [];
+
+  // Get user details for these conversation users
+  final usersResponse = await supabase
+      .from('users')
+      .select()
+      .inFilter('id', conversationUserIds.toList());
+
+  return usersResponse.map((json) => UserModel.fromJson(json)).toList();
+}
+
 @riverpod
-Future<List<UserModel>> conversationUsers(Ref ref) async {
+Stream<List<UserModel>> conversationUsers(Ref ref) async* {
   final supabase = Supabase.instance.client;
   final currentUserId = supabase.auth.currentUser?.id;
-  if (currentUserId == null) return [];
+  if (currentUserId == null) {
+    yield [];
+    return;
+  }
 
-  try {
-    // Get unique users that current user has sent messages to or received messages from
-    final response = await supabase
-        .from('messages')
-        .select('sender_id, receiver_id')
-        .or('sender_id.eq.$currentUserId,receiver_id.eq.$currentUserId')
-        .neq('is_deleted', true);
+  final controller = StreamController<List<UserModel>>();
+  Timer? refreshTimer;
 
-    final Set<String> conversationUserIds = {};
-    for (final message in response as List) {
-      final senderId = message['sender_id'] as String?;
-      final receiverId = message['receiver_id'] as String?;
-
-      if (senderId != null && senderId != currentUserId) {
-        conversationUserIds.add(senderId);
+  Future<void> fetchAndEmit() async {
+    try {
+      final users = await _fetchConversationUsers(supabase, currentUserId);
+      if (!controller.isClosed) {
+        controller.add(users);
       }
-      if (receiverId != null && receiverId != currentUserId) {
-        conversationUserIds.add(receiverId);
+    } catch (_) {
+      if (!controller.isClosed) {
+        controller.add([]);
       }
     }
+  }
 
-    if (conversationUserIds.isEmpty) return [];
+  yield await _fetchConversationUsers(supabase, currentUserId);
 
-    // Get user details for these conversation users
-    final usersResponse = await supabase
-        .from('users')
-        .select()
-        .inFilter('id', conversationUserIds.toList());
+  final channel = supabase
+      .channel('conversation_users_$currentUserId')
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'users',
+        callback: (_) => fetchAndEmit(),
+      )
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'messages',
+        callback: (_) => fetchAndEmit(),
+      )
+      .subscribe();
 
-    return usersResponse.map((json) => UserModel.fromJson(json)).toList();
-  } catch (e) {
-    // Error handling without print in production
-    return [];
+  refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    fetchAndEmit();
+  });
+
+  ref.onDispose(() {
+    supabase.removeChannel(channel);
+    refreshTimer?.cancel();
+    controller.close();
+  });
+
+  await for (final users in controller.stream) {
+    yield users;
   }
 }
 
