@@ -6,98 +6,252 @@ part of 'message_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$conversationUsersHash() => r'd8f7c137c1b43f598b49ee7f1b2f630310a265fa';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [conversationUsers].
-@ProviderFor(conversationUsers)
-final conversationUsersProvider =
-    AutoDisposeStreamProvider<List<UserModel>>.internal(
-      conversationUsers,
-      name: r'conversationUsersProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$conversationUsersHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
+@ProviderFor(MessageNotifier)
+final messageProvider = MessageNotifierProvider._();
+
+final class MessageNotifierProvider
+    extends $NotifierProvider<MessageNotifier, AsyncValue<List<MessageModel>>> {
+  MessageNotifierProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'messageProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$messageNotifierHash();
+
+  @$internal
+  @override
+  MessageNotifier create() => MessageNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AsyncValue<List<MessageModel>> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AsyncValue<List<MessageModel>>>(
+        value,
+      ),
     );
+  }
+}
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef ConversationUsersRef = AutoDisposeStreamProviderRef<List<UserModel>>;
-String _$getLastMessagesHash() => r'7d39343fcb2752404ce76235e71d0cc77b615ed8';
-
-/// See also [getLastMessages].
-@ProviderFor(getLastMessages)
-final getLastMessagesProvider =
-    AutoDisposeStreamProvider<Map<String, MessageModel>>.internal(
-      getLastMessages,
-      name: r'getLastMessagesProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$getLastMessagesHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef GetLastMessagesRef =
-    AutoDisposeStreamProviderRef<Map<String, MessageModel>>;
-String _$getUnreadMessageCountsHash() =>
-    r'd610d04c4c3aeec67732e23d526ab3c8ccf941c2';
-
-/// See also [getUnreadMessageCounts].
-@ProviderFor(getUnreadMessageCounts)
-final getUnreadMessageCountsProvider =
-    AutoDisposeStreamProvider<Map<String, int>>.internal(
-      getUnreadMessageCounts,
-      name: r'getUnreadMessageCountsProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$getUnreadMessageCountsHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef GetUnreadMessageCountsRef =
-    AutoDisposeStreamProviderRef<Map<String, int>>;
 String _$messageNotifierHash() => r'd7cbd9add1a9daca9bd2a316a96b7ece03d58cda';
 
-/// See also [MessageNotifier].
-@ProviderFor(MessageNotifier)
-final messageNotifierProvider =
-    NotifierProvider<MessageNotifier, AsyncValue<List<MessageModel>>>.internal(
-      MessageNotifier.new,
-      name: r'messageNotifierProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$messageNotifierHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+abstract class _$MessageNotifier
+    extends $Notifier<AsyncValue<List<MessageModel>>> {
+  AsyncValue<List<MessageModel>> build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref =
+        this.ref
+            as $Ref<
+              AsyncValue<List<MessageModel>>,
+              AsyncValue<List<MessageModel>>
+            >;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<
+                AsyncValue<List<MessageModel>>,
+                AsyncValue<List<MessageModel>>
+              >,
+              AsyncValue<List<MessageModel>>,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
 
-typedef _$MessageNotifier = Notifier<AsyncValue<List<MessageModel>>>;
+@ProviderFor(MessagePagination)
+final messagePaginationProvider = MessagePaginationProvider._();
+
+final class MessagePaginationProvider
+    extends
+        $NotifierProvider<MessagePagination, AsyncValue<List<MessageModel>>> {
+  MessagePaginationProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'messagePaginationProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$messagePaginationHash();
+
+  @$internal
+  @override
+  MessagePagination create() => MessagePagination();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AsyncValue<List<MessageModel>> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AsyncValue<List<MessageModel>>>(
+        value,
+      ),
+    );
+  }
+}
+
 String _$messagePaginationHash() => r'59d6a4486c4aa9a1bd04d054f796a3b3343d01ab';
 
-/// See also [MessagePagination].
-@ProviderFor(MessagePagination)
-final messagePaginationProvider =
-    AutoDisposeNotifierProvider<
-      MessagePagination,
-      AsyncValue<List<MessageModel>>
-    >.internal(
-      MessagePagination.new,
-      name: r'messagePaginationProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$messagePaginationHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+abstract class _$MessagePagination
+    extends $Notifier<AsyncValue<List<MessageModel>>> {
+  AsyncValue<List<MessageModel>> build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref =
+        this.ref
+            as $Ref<
+              AsyncValue<List<MessageModel>>,
+              AsyncValue<List<MessageModel>>
+            >;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<
+                AsyncValue<List<MessageModel>>,
+                AsyncValue<List<MessageModel>>
+              >,
+              AsyncValue<List<MessageModel>>,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
 
-typedef _$MessagePagination =
-    AutoDisposeNotifier<AsyncValue<List<MessageModel>>>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+@ProviderFor(conversationUsers)
+final conversationUsersProvider = ConversationUsersProvider._();
+
+final class ConversationUsersProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<UserModel>>,
+          List<UserModel>,
+          Stream<List<UserModel>>
+        >
+    with $FutureModifier<List<UserModel>>, $StreamProvider<List<UserModel>> {
+  ConversationUsersProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'conversationUsersProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$conversationUsersHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<UserModel>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<UserModel>> create(Ref ref) {
+    return conversationUsers(ref);
+  }
+}
+
+String _$conversationUsersHash() => r'43c162f2899b1f5a6563f8df421dab5a9350061d';
+
+@ProviderFor(getLastMessages)
+final getLastMessagesProvider = GetLastMessagesProvider._();
+
+final class GetLastMessagesProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<Map<String, MessageModel>>,
+          Map<String, MessageModel>,
+          Stream<Map<String, MessageModel>>
+        >
+    with
+        $FutureModifier<Map<String, MessageModel>>,
+        $StreamProvider<Map<String, MessageModel>> {
+  GetLastMessagesProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'getLastMessagesProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$getLastMessagesHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<Map<String, MessageModel>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<Map<String, MessageModel>> create(Ref ref) {
+    return getLastMessages(ref);
+  }
+}
+
+String _$getLastMessagesHash() => r'7d39343fcb2752404ce76235e71d0cc77b615ed8';
+
+@ProviderFor(getUnreadMessageCounts)
+final getUnreadMessageCountsProvider = GetUnreadMessageCountsProvider._();
+
+final class GetUnreadMessageCountsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<Map<String, int>>,
+          Map<String, int>,
+          Stream<Map<String, int>>
+        >
+    with $FutureModifier<Map<String, int>>, $StreamProvider<Map<String, int>> {
+  GetUnreadMessageCountsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'getUnreadMessageCountsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$getUnreadMessageCountsHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<Map<String, int>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<Map<String, int>> create(Ref ref) {
+    return getUnreadMessageCounts(ref);
+  }
+}
+
+String _$getUnreadMessageCountsHash() =>
+    r'd610d04c4c3aeec67732e23d526ab3c8ccf941c2';

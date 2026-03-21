@@ -27,15 +27,18 @@ class WebSocketNotifier extends _$WebSocketNotifier {
   static const int _maxReconnectAttempts = 5;
   static const Duration _reconnectDelay = Duration(seconds: 3);
   static const Duration _heartbeatInterval = Duration(seconds: 30);
-  static const String _defaultServerUrl = 'https://communist-alexi-kfa-8f51d6f6.koyeb.app';
+  static const String _defaultServerUrl =
+      'https://communist-alexi-kfa-8f51d6f6.koyeb.app';
 
   @override
   AsyncValue<WebSocketConnectionState> build() {
-    return const AsyncValue.data(WebSocketConnectionState(
-      status: WebSocketStatus.disconnected,
-      connectedAt: null,
-      lastError: null,
-    ));
+    return const AsyncValue.data(
+      WebSocketConnectionState(
+        status: WebSocketStatus.disconnected,
+        connectedAt: null,
+        lastError: null,
+      ),
+    );
   }
 
   Future<void> connect({
@@ -53,14 +56,18 @@ class WebSocketNotifier extends _$WebSocketNotifier {
     }
 
     try {
-      state = const AsyncValue.data(WebSocketConnectionState(
-        status: WebSocketStatus.connecting,
-        connectedAt: null,
-        lastError: null,
-      ));
+      state = const AsyncValue.data(
+        WebSocketConnectionState(
+          status: WebSocketStatus.connecting,
+          connectedAt: null,
+          lastError: null,
+        ),
+      );
 
       // Use wss:// for secure WebSocket connection
-      final wsUrl = Uri.parse('${_currentServerUrl}/chat?userId=$userId&token=$token');
+      final wsUrl = Uri.parse(
+        '${_currentServerUrl}/chat?userId=$userId&token=$token',
+      );
       print('🔌 Connecting to WebSocket: $wsUrl');
 
       _channel = WebSocketChannel.connect(wsUrl);
@@ -86,11 +93,13 @@ class WebSocketNotifier extends _$WebSocketNotifier {
       // Start heartbeat
       _startHeartbeat();
 
-      state = AsyncValue.data(WebSocketConnectionState(
-        status: WebSocketStatus.connected,
-        connectedAt: DateTime.now(),
-        lastError: null,
-      ));
+      state = AsyncValue.data(
+        WebSocketConnectionState(
+          status: WebSocketStatus.connected,
+          connectedAt: DateTime.now(),
+          lastError: null,
+        ),
+      );
 
       _reconnectAttempts = 0;
       _isReconnecting = false;
@@ -98,11 +107,13 @@ class WebSocketNotifier extends _$WebSocketNotifier {
       print('✅ WebSocket connected successfully');
     } catch (e) {
       print('❌ WebSocket connection failed: $e');
-      state = AsyncValue.data(WebSocketConnectionState(
-        status: WebSocketStatus.failed,
-        connectedAt: null,
-        lastError: e.toString(),
-      ));
+      state = AsyncValue.data(
+        WebSocketConnectionState(
+          status: WebSocketStatus.failed,
+          connectedAt: null,
+          lastError: e.toString(),
+        ),
+      );
       _scheduleReconnect();
     }
   }
@@ -141,26 +152,32 @@ class WebSocketNotifier extends _$WebSocketNotifier {
 
   void _handleError(Object error) {
     print('❌ WebSocket error: $error');
-    state = AsyncValue.data(WebSocketConnectionState(
-      status: WebSocketStatus.failed,
-      connectedAt: state.value?.connectedAt,
-      lastError: error.toString(),
-    ));
+    state = AsyncValue.data(
+      WebSocketConnectionState(
+        status: WebSocketStatus.failed,
+        connectedAt: state.value?.connectedAt,
+        lastError: error.toString(),
+      ),
+    );
   }
 
   void _handleDisconnect() {
     print('🔌 WebSocket disconnected');
 
-    state = AsyncValue.data(WebSocketConnectionState(
-      status: WebSocketStatus.disconnected,
-      connectedAt: state.value?.connectedAt,
-      lastError: 'Connection lost',
-    ));
+    state = AsyncValue.data(
+      WebSocketConnectionState(
+        status: WebSocketStatus.disconnected,
+        connectedAt: state.value?.connectedAt,
+        lastError: 'Connection lost',
+      ),
+    );
 
     _heartbeatTimer?.cancel();
 
     // Attempt to reconnect if not intentional and we have credentials
-    if (_isReconnecting == false && _currentUserId != null && _currentToken != null) {
+    if (_isReconnecting == false &&
+        _currentUserId != null &&
+        _currentToken != null) {
       _scheduleReconnect();
     }
   }
@@ -194,13 +211,17 @@ class WebSocketNotifier extends _$WebSocketNotifier {
   }
 
   void _scheduleReconnect() {
-    if (_reconnectAttempts >= _maxReconnectAttempts || _currentUserId == null || _currentToken == null) {
+    if (_reconnectAttempts >= _maxReconnectAttempts ||
+        _currentUserId == null ||
+        _currentToken == null) {
       print('❌ Cannot reconnect: max attempts reached or missing credentials');
-      state = AsyncValue.data(WebSocketConnectionState(
-        status: WebSocketStatus.failed,
-        connectedAt: state.value?.connectedAt,
-        lastError: 'Max reconnect attempts reached',
-      ));
+      state = AsyncValue.data(
+        WebSocketConnectionState(
+          status: WebSocketStatus.failed,
+          connectedAt: state.value?.connectedAt,
+          lastError: 'Max reconnect attempts reached',
+        ),
+      );
       return;
     }
 
@@ -208,13 +229,17 @@ class WebSocketNotifier extends _$WebSocketNotifier {
     _reconnectAttempts++;
 
     final delay = _reconnectDelay * _reconnectAttempts;
-    print('🔄 Scheduling reconnect in ${delay.inSeconds} seconds (attempt $_reconnectAttempts)');
+    print(
+      '🔄 Scheduling reconnect in ${delay.inSeconds} seconds (attempt $_reconnectAttempts)',
+    );
 
-    state = AsyncValue.data(WebSocketConnectionState(
-      status: WebSocketStatus.reconnecting,
-      connectedAt: state.value?.connectedAt,
-      lastError: 'Reconnecting... attempt $_reconnectAttempts',
-    ));
+    state = AsyncValue.data(
+      WebSocketConnectionState(
+        status: WebSocketStatus.reconnecting,
+        connectedAt: state.value?.connectedAt,
+        lastError: 'Reconnecting... attempt $_reconnectAttempts',
+      ),
+    );
 
     Timer(delay, () {
       if (_isReconnecting && _currentUserId != null && _currentToken != null) {
@@ -243,11 +268,13 @@ class WebSocketNotifier extends _$WebSocketNotifier {
       _channel = null;
     }
 
-    state = const AsyncValue.data(WebSocketConnectionState(
-      status: WebSocketStatus.disconnected,
-      connectedAt: null,
-      lastError: null,
-    ));
+    state = const AsyncValue.data(
+      WebSocketConnectionState(
+        status: WebSocketStatus.disconnected,
+        connectedAt: null,
+        lastError: null,
+      ),
+    );
 
     _currentUserId = null;
     _currentToken = null;
@@ -275,19 +302,20 @@ class WebSocketConnectionState {
   });
 
   @override
-  String toString() => 'WebSocketConnectionState(status: $status, connectedAt: $connectedAt, lastError: $lastError)';
+  String toString() =>
+      'WebSocketConnectionState(status: $status, connectedAt: $connectedAt, lastError: $lastError)';
 }
 
 // Utility provider for WebSocket status
 @riverpod
 bool isWebSocketConnected(Ref ref) {
-  final wsState = ref.watch(webSocketNotifierProvider);
+  final wsState = ref.watch(webSocketProvider);
   return wsState.value?.status == WebSocketStatus.connected;
 }
 
 // Provider for WebSocket status enum
 @riverpod
 WebSocketStatus webSocketStatus(Ref ref) {
-  final wsState = ref.watch(webSocketNotifierProvider);
+  final wsState = ref.watch(webSocketProvider);
   return wsState.value?.status ?? WebSocketStatus.disconnected;
 }

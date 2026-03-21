@@ -3,6 +3,7 @@ import 'package:chat_apps/provider/user_provider.dart';
 import 'package:chat_apps/model/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 final newChatSearchProvider = StateProvider<String>((ref) => '');
 
@@ -116,7 +117,9 @@ class NewChatScreen extends ConsumerWidget {
                           onTap: () async {
                             // Create or get private conversation
                             final conversationId = await ref.read(
-                              createOrGetPrivateConversationProvider(user.id!).future,
+                              createOrGetPrivateConversationProvider(
+                                user.id!,
+                              ).future,
                             );
 
                             // Navigate to chat screen
@@ -125,9 +128,11 @@ class NewChatScreen extends ConsumerWidget {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => ChatScreen(
-                                    senderId: currentUserData?.id?.toString() ?? '',
+                                    senderId:
+                                        currentUserData?.id?.toString() ?? '',
                                     otherUserName: user.displayName,
-                                    otherUserAvatar: user.profilePictureUrl ??
+                                    otherUserAvatar:
+                                        user.profilePictureUrl ??
                                         'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
                                     receiverId: user.id?.toString() ?? '',
                                     conversationId: conversationId,
@@ -140,16 +145,15 @@ class NewChatScreen extends ConsumerWidget {
                       },
                     );
                   },
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (error, stackTrace) => Center(
-                    child: Text('Error: $error'),
-                  ),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (error, stackTrace) =>
+                      Center(child: Text('Error: $error')),
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stackTrace) => Center(
-                child: Text('Error: $error'),
-              ),
+              error: (error, stackTrace) =>
+                  Center(child: Text('Error: $error')),
             ),
           ),
         ],
@@ -244,8 +248,7 @@ class UserTile extends StatelessWidget {
 
   String _formatLastSeen(DateTime? lastSeenAt) {
     if (lastSeenAt == null) return 'Offline';
-    Duration difference =
-        DateTime.now().toUtc().difference(lastSeenAt.toUtc());
+    Duration difference = DateTime.now().toUtc().difference(lastSeenAt.toUtc());
     if (difference.isNegative) {
       difference = difference.abs();
     }

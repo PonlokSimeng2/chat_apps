@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import '../main.dart';
 
 /// Error message model
@@ -34,15 +35,12 @@ class ErrorInfo {
 }
 
 /// Error severity levels
-enum ErrorSeverity {
-  info,
-  warning,
-  error,
-  critical,
-}
+enum ErrorSeverity { info, warning, error, critical }
 
 /// Error state management provider
-final errorProvider = StateNotifierProvider<ErrorNotifier, List<ErrorInfo>>((ref) {
+final errorProvider = StateNotifierProvider<ErrorNotifier, List<ErrorInfo>>((
+  ref,
+) {
   return ErrorNotifier();
 });
 
@@ -50,7 +48,11 @@ class ErrorNotifier extends StateNotifier<List<ErrorInfo>> {
   ErrorNotifier() : super([]);
 
   /// Add a new error to the state
-  void addError(String message, {String? details, ErrorSeverity severity = ErrorSeverity.error}) {
+  void addError(
+    String message, {
+    String? details,
+    ErrorSeverity severity = ErrorSeverity.error,
+  }) {
     final error = ErrorInfo(
       message: message,
       details: details,
@@ -89,7 +91,8 @@ class ErrorNotifier extends StateNotifier<List<ErrorInfo>> {
   ErrorInfo? get latestError => state.isNotEmpty ? state.first : null;
 
   /// Check if there are any critical errors
-  bool get hasCriticalErrors => state.any((e) => e.severity == ErrorSeverity.critical);
+  bool get hasCriticalErrors =>
+      state.any((e) => e.severity == ErrorSeverity.critical);
 
   /// Check if there are any errors
   bool get hasErrors => state.isNotEmpty;
@@ -97,7 +100,12 @@ class ErrorNotifier extends StateNotifier<List<ErrorInfo>> {
 
 /// Enhanced Talker integration with visual feedback
 class VisualTalker {
-  static void logError(String message, {Object? error, StackTrace? stackTrace, ErrorSeverity severity = ErrorSeverity.error}) {
+  static void logError(
+    String message, {
+    Object? error,
+    StackTrace? stackTrace,
+    ErrorSeverity severity = ErrorSeverity.error,
+  }) {
     // Log to Talker
     switch (severity) {
       case ErrorSeverity.info:
@@ -123,7 +131,16 @@ class VisualTalker {
     logError(message, severity: ErrorSeverity.warning);
   }
 
-  static void logCritical(String message, {Object? error, StackTrace? stackTrace}) {
-    logError(message, error: error, stackTrace: stackTrace, severity: ErrorSeverity.critical);
+  static void logCritical(
+    String message, {
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
+    logError(
+      message,
+      error: error,
+      stackTrace: stackTrace,
+      severity: ErrorSeverity.critical,
+    );
   }
 }

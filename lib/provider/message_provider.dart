@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../model/message_model.dart';
@@ -33,70 +32,74 @@ class MessageNotifier extends _$MessageNotifier {
         return;
       }
 
-      talker.info('Setting up Realtime subscription for conversation $conversationId');
+      talker.info(
+        'Setting up Realtime subscription for conversation $conversationId',
+      );
 
-    // Create a channel for this conversation
-    _channel = _client.channel('messages:conversation:$conversationId');
+      // Create a channel for this conversation
+      _channel = _client.channel('messages:conversation:$conversationId');
 
-    // Subscribe to INSERT events
-    _channel!
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'messages',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'conversation_id',
-            value: conversationId,
-          ),
-          callback: (payload) {
-            print('Realtime: 📨 New message received');
-            _handleInsert(payload);
-          },
-        )
-        // Subscribe to UPDATE events
-        .onPostgresChanges(
-          event: PostgresChangeEvent.update,
-          schema: 'public',
-          table: 'messages',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'conversation_id',
-            value: conversationId,
-          ),
-          callback: (payload) {
-            print('Realtime: 🔄 Message updated');
-            _handleUpdate(payload);
-          },
-        )
-        // Subscribe to DELETE events
-        .onPostgresChanges(
-          event: PostgresChangeEvent.delete,
-          schema: 'public',
-          table: 'messages',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'conversation_id',
-            value: conversationId,
-          ),
-          callback: (payload) {
-            print('Realtime: 🗑️ Message deleted');
-            _handleDelete(payload);
-          },
-        )
-        .subscribe((status, error) {
-          if (status == RealtimeSubscribeStatus.subscribed) {
-            talker.info('Successfully subscribed to conversation $conversationId');
-          } else if (status == RealtimeSubscribeStatus.timedOut) {
-            talker.warning('Realtime subscription timed out, retrying...');
-            // Retry subscription
-            Future.delayed(const Duration(seconds: 2), () {
-              _setupRealtimeSubscription(conversationId, receiverId);
-            });
-          } else if (status == RealtimeSubscribeStatus.channelError) {
-            talker.error('Realtime channel error', error);
-          }
-        });
+      // Subscribe to INSERT events
+      _channel!
+          .onPostgresChanges(
+            event: PostgresChangeEvent.insert,
+            schema: 'public',
+            table: 'messages',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'conversation_id',
+              value: conversationId,
+            ),
+            callback: (payload) {
+              print('Realtime: 📨 New message received');
+              _handleInsert(payload);
+            },
+          )
+          // Subscribe to UPDATE events
+          .onPostgresChanges(
+            event: PostgresChangeEvent.update,
+            schema: 'public',
+            table: 'messages',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'conversation_id',
+              value: conversationId,
+            ),
+            callback: (payload) {
+              print('Realtime: 🔄 Message updated');
+              _handleUpdate(payload);
+            },
+          )
+          // Subscribe to DELETE events
+          .onPostgresChanges(
+            event: PostgresChangeEvent.delete,
+            schema: 'public',
+            table: 'messages',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'conversation_id',
+              value: conversationId,
+            ),
+            callback: (payload) {
+              print('Realtime: 🗑️ Message deleted');
+              _handleDelete(payload);
+            },
+          )
+          .subscribe((status, error) {
+            if (status == RealtimeSubscribeStatus.subscribed) {
+              talker.info(
+                'Successfully subscribed to conversation $conversationId',
+              );
+            } else if (status == RealtimeSubscribeStatus.timedOut) {
+              talker.warning('Realtime subscription timed out, retrying...');
+              // Retry subscription
+              Future.delayed(const Duration(seconds: 2), () {
+                _setupRealtimeSubscription(conversationId, receiverId);
+              });
+            } else if (status == RealtimeSubscribeStatus.channelError) {
+              talker.error('Realtime channel error', error);
+            }
+          });
     } catch (e, st) {
       talker.error('Error setting up realtime subscription', e, st);
     }
@@ -174,13 +177,19 @@ class MessageNotifier extends _$MessageNotifier {
           .map((json) => MessageModel.fromJson(json))
           .toList();
 
-      talker.info('Loaded ${messages.length} messages for conversation $conversationId');
+      talker.info(
+        'Loaded ${messages.length} messages for conversation $conversationId',
+      );
       state = AsyncValue.data(messages);
 
       // Setup Realtime subscription
       _setupRealtimeSubscription(conversationId, receiverId);
     } catch (e, stack) {
-      talker.error('Error loading messages for conversation $conversationId', e, stack);
+      talker.error(
+        'Error loading messages for conversation $conversationId',
+        e,
+        stack,
+      );
       state = AsyncValue.error(e, stack);
     }
   }

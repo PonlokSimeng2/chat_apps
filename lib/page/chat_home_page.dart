@@ -4,6 +4,7 @@ import 'package:chat_apps/page/profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chat_apps/utils/responsive_helper.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 // Providers
 final selectedTabProvider = StateProvider<int>((ref) => 0);
@@ -43,7 +44,9 @@ class ChatHomeScreen extends ConsumerWidget {
                 backgroundColor: const Color(0xFF1F2937),
                 extended: true,
                 labelType: NavigationRailLabelType.all,
-                selectedIconTheme: const IconThemeData(color: Color(0xFF0D7FF2)),
+                selectedIconTheme: const IconThemeData(
+                  color: Color(0xFF0D7FF2),
+                ),
                 selectedLabelTextStyle: const TextStyle(
                   color: Color(0xFF0D7FF2),
                   fontWeight: FontWeight.bold,
@@ -104,7 +107,7 @@ class ChatHomeScreen extends ConsumerWidget {
                 children: const [
                   ChatListScreen(),
                   ContactsScreen(),
-                  ProfilePage()
+                  ProfilePage(),
                 ],
               ),
             ),

@@ -6,22 +6,46 @@ part of 'supabase_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$supabaseHash() => r'c54624c308bbff6130a2fe7108736d57088aef0b';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [supabase].
 @ProviderFor(supabase)
-final supabaseProvider = Provider<Supabase>.internal(
-  supabase,
-  name: r'supabaseProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$supabaseHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final supabaseProvider = SupabaseProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef SupabaseRef = ProviderRef<Supabase>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class SupabaseProvider
+    extends $FunctionalProvider<Supabase, Supabase, Supabase>
+    with $Provider<Supabase> {
+  SupabaseProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'supabaseProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$supabaseHash();
+
+  @$internal
+  @override
+  $ProviderElement<Supabase> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  Supabase create(Ref ref) {
+    return supabase(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Supabase value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Supabase>(value),
+    );
+  }
+}
+
+String _$supabaseHash() => r'c54624c308bbff6130a2fe7108736d57088aef0b';

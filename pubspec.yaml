@@ -11,8 +11,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   web_socket_channel: ^3.0.3
   flutter_chat_bubble: ^2.0.2
-  flutter_riverpod: ^2.6.1
-  riverpod_annotation: ^2.6.1
+  flutter_riverpod: ^3.1.0
+  riverpod_annotation: ^4.0.0
   supabase_flutter: ^2.9.1
   shared_preferences: ^2.5.3
   image_picker: ^1.1.2
@@ -20,19 +20,19 @@ dependencies:
   talker_flutter: ^5.0.2
   responsive_framework: ^1.5.1
   onesignal_flutter: ^5.3.4
-  firebase_core: ^4.2.1
+  firebase_core: ^3.13.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
-  riverpod_generator: ^2.6.5
+  flutter_lints: ^6.0.0
+  riverpod_generator: ^4.0.0+1
   build_runner: ^2.5.4
-  custom_lint: ^0.7.6
-  riverpod_lint: ^2.6.5
+  custom_lint: ^0.8.1
+  riverpod_lint: ^3.1.0
   flutter_launcher_icons: "^0.14.4"
   mockito: ^5.4.4
-  build_test: ^2.1.7
+  build_test: ^3.5.12
 
 flutter_launcher_icons:
   android: "launcher_icon"

@@ -39,7 +39,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       // Load messages and setup Realtime subscription
       Future.microtask(
         () => ref
-            .read(messageNotifierProvider.notifier)
+            .read(messageProvider.notifier)
             .loadMessages(widget.conversationId, widget.receiverId),
       );
     } catch (e, st) {
@@ -64,7 +64,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
       // Send message - Realtime will handle updates automatically
       ref
-          .read(messageNotifierProvider.notifier)
+          .read(messageProvider.notifier)
           .sendMessage(
             conversationId: widget.conversationId,
             senderId: widget.senderId,
@@ -149,10 +149,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final messagesState = ref.watch(messageNotifierProvider);
+    final messagesState = ref.watch(messageProvider);
 
     // Auto-scroll when new messages arrive
-    ref.listen<AsyncValue<List<MessageModel>>>(messageNotifierProvider, (
+    ref.listen<AsyncValue<List<MessageModel>>>(messageProvider, (
       _,
       next,
     ) {
@@ -331,7 +331,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     // Auto-mark received messages as read when they are displayed
     if (!isSentByMe && message.isUnread && message.id != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(messageNotifierProvider.notifier).markAsRead(message.id!);
+        ref.read(messageProvider.notifier).markAsRead(message.id!);
       });
     }
 
@@ -484,7 +484,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 // Retry sending the message
                 if (message.id != null) {
                   ref
-                      .read(messageNotifierProvider.notifier)
+                      .read(messageProvider.notifier)
                       .sendMessage(
                         conversationId: widget.conversationId,
                         senderId: widget.senderId,
@@ -577,7 +577,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Future<void> _markAllAsRead(List<MessageModel> messages) async {
     try {
       talker.info('Marking all messages as read');
-      final messageNotifier = ref.read(messageNotifierProvider.notifier);
+      final messageNotifier = ref.read(messageProvider.notifier);
 
       for (final message in messages) {
         if (message.senderId != widget.senderId &&

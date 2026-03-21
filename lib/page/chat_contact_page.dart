@@ -4,6 +4,7 @@ import 'package:chat_apps/provider/message_provider.dart';
 import 'package:chat_apps/model/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 final contactsSearchProvider = StateProvider<String>((ref) => '');
 
@@ -88,11 +89,14 @@ class ContactsScreen extends ConsumerWidget {
                         final currentUserId = currentUserData?.id;
                         final filteredUsers = allUsers.where((user) {
                           // Exclude current user
-                          if (currentUserId != null && user.id == currentUserId) {
+                          if (currentUserId != null &&
+                              user.id == currentUserId) {
                             return false;
                           }
                           // Exclude users you already have conversations with
-                          if (conversationUsers.any((convUser) => convUser.id == user.id)) {
+                          if (conversationUsers.any(
+                            (convUser) => convUser.id == user.id,
+                          )) {
                             return false;
                           }
                           // Filter based on search query
@@ -139,11 +143,14 @@ class ContactsScreen extends ConsumerWidget {
                             final user = filteredUsers[index];
                             return ContactTile(
                               user: user,
-                              currentUserId: currentUserData?.id?.toString() ?? '',
+                              currentUserId:
+                                  currentUserData?.id?.toString() ?? '',
                               onTap: () async {
                                 // Create or get private conversation
                                 final conversationId = await ref.read(
-                                  createOrGetPrivateConversationProvider(user.id!).future,
+                                  createOrGetPrivateConversationProvider(
+                                    user.id!,
+                                  ).future,
                                 );
 
                                 if (context.mounted) {
@@ -151,9 +158,12 @@ class ContactsScreen extends ConsumerWidget {
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) => ChatScreen(
-                                        senderId: currentUserData?.id?.toString() ?? '',
+                                        senderId:
+                                            currentUserData?.id?.toString() ??
+                                            '',
                                         otherUserName: user.displayName,
-                                        otherUserAvatar: user.profilePictureUrl ??
+                                        otherUserAvatar:
+                                            user.profilePictureUrl ??
                                             'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
                                         receiverId: user.id?.toString() ?? '',
                                         conversationId: conversationId,
@@ -166,22 +176,21 @@ class ContactsScreen extends ConsumerWidget {
                           },
                         );
                       },
-                      loading: () => const Center(child: CircularProgressIndicator()),
-                      error: (error, stackTrace) => Center(
-                        child: Text('Error: $error'),
-                      ),
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
+                      error: (error, stackTrace) =>
+                          Center(child: Text('Error: $error')),
                     );
                   },
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (error, stackTrace) => Center(
-                    child: Text('Error: $error'),
-                  ),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (error, stackTrace) =>
+                      Center(child: Text('Error: $error')),
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stackTrace) => Center(
-                child: Text('Error: $error'),
-              ),
+              error: (error, stackTrace) =>
+                  Center(child: Text('Error: $error')),
             ),
           ),
         ],
@@ -212,10 +221,7 @@ class ContactTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF1E293B),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: const Color(0xFF374151),
-            width: 1,
-          ),
+          border: Border.all(color: const Color(0xFF374151), width: 1),
         ),
         child: Row(
           children: [
@@ -248,10 +254,7 @@ class ContactTile extends StatelessWidget {
                           ? const Color(0xFF10B981)
                           : Colors.grey,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: Colors.black,
-                        width: 2,
-                      ),
+                      border: Border.all(color: Colors.black, width: 2),
                     ),
                   ),
                 ),
@@ -337,8 +340,7 @@ class ContactTile extends StatelessWidget {
 
   String _formatLastSeen(DateTime? lastSeenAt) {
     if (lastSeenAt == null) return 'Offline';
-    Duration difference =
-        DateTime.now().toUtc().difference(lastSeenAt.toUtc());
+    Duration difference = DateTime.now().toUtc().difference(lastSeenAt.toUtc());
     if (difference.isNegative) {
       difference = difference.abs();
     }
