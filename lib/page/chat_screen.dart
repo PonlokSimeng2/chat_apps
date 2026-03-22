@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
+import 'package:flutter/foundation.dart' as foundation;
+import 'package:flutter/services.dart';
 import '../model/message_model.dart';
 import '../model/message_status.dart';
 import '../provider/message_provider.dart';
@@ -31,12 +34,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
+  // ✅ Quick reaction emojis — rendered by emoji_picker_flutter font (works on Android)
+  static const List<String> _quickReactions = [
+    '❤️',
+    '😆',
+    '😮',
+    '😢',
+    '😡',
+    '👍',
+  ];
+
   @override
   void initState() {
     super.initState();
     try {
-      talker.info('Initializing ChatScreen for conversation: ${widget.conversationId}');
-      // Load messages and setup Realtime subscription
+      talker.info(
+        'Initializing ChatScreen for conversation: ${widget.conversationId}',
+      );
       Future.microtask(
         () => ref
             .read(messageProvider.notifier)
@@ -44,12 +58,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       );
     } catch (e, st) {
       talker.error('Error initializing ChatScreen', e, st);
-      // Add to visual error tracking
-      ref.read(errorProvider.notifier).addError(
-        'Failed to load chat messages',
-        details: e.toString(),
-        severity: ErrorSeverity.error,
-      );
+      ref
+          .read(errorProvider.notifier)
+          .addError(
+            'Failed to load chat messages',
+            details: e.toString(),
+            severity: ErrorSeverity.error,
+          );
     }
   }
 
@@ -62,7 +77,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
       talker.info('Sending message: ${_messageController.text.trim()}');
 
-      // Send message - Realtime will handle updates automatically
       ref
           .read(messageProvider.notifier)
           .sendMessage(
@@ -76,13 +90,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _scrollToBottom();
     } catch (e, st) {
       talker.error('Error sending message', e, st);
-      // Add to visual error tracking
-      ref.read(errorProvider.notifier).addError(
-        'Failed to send message',
-        details: e.toString(),
-        severity: ErrorSeverity.error,
-      );
-      // Show error to user
+      ref
+          .read(errorProvider.notifier)
+          .addError(
+            'Failed to send message',
+            details: e.toString(),
+            severity: ErrorSeverity.error,
+          );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -92,10 +106,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               const Text('Failed to send message'),
               const Spacer(),
               GestureDetector(
-                onTap: () {
-                  // Retry sending
-                  _sendMessage();
-                },
+                onTap: () => _sendMessage(),
                 child: const Text(
                   'RETRY',
                   style: TextStyle(
@@ -131,12 +142,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       });
     } catch (e, st) {
       talker.error('Error scrolling to bottom', e, st);
-      // Add to visual error tracking (less severe)
-      ref.read(errorProvider.notifier).addError(
-        'Chat scrolling issue',
-        details: e.toString(),
-        severity: ErrorSeverity.warning,
-      );
+      ref
+          .read(errorProvider.notifier)
+          .addError(
+            'Chat scrolling issue',
+            details: e.toString(),
+            severity: ErrorSeverity.warning,
+          );
     }
   }
 
@@ -151,23 +163,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     final messagesState = ref.watch(messageProvider);
 
-    // Auto-scroll when new messages arrive
-    ref.listen<AsyncValue<List<MessageModel>>>(messageProvider, (
-      _,
-      next,
-    ) {
+    ref.listen<AsyncValue<List<MessageModel>>>(messageProvider, (_, next) {
       try {
         if (next is AsyncData) {
-          talker.debug('New messages loaded: ${next.value?.length ?? 0} messages');
+          talker.debug(
+            'New messages loaded: ${next.value?.length ?? 0} messages',
+          );
           _scrollToBottom();
         } else if (next is AsyncError) {
           talker.error('Error in messages state', next.error, next.stackTrace);
-          // Add to visual error tracking
-          ref.read(errorProvider.notifier).addError(
-            'Failed to load messages',
-            details: next.error.toString(),
-            severity: ErrorSeverity.error,
-          );
+          ref
+              .read(errorProvider.notifier)
+              .addError(
+                'Failed to load messages',
+                details: next.error.toString(),
+                severity: ErrorSeverity.error,
+              );
         }
       } catch (e, st) {
         talker.error('Error handling messages state change', e, st);
@@ -238,7 +249,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ),
       body: Column(
         children: [
-          // Unread count header
           Consumer(
             builder: (context, ref, child) {
               final unreadCount = _getUnreadCount(messagesState.value ?? []);
@@ -328,7 +338,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildMessageBubble(MessageModel message, bool isSentByMe) {
-    // Auto-mark received messages as read when they are displayed
     if (!isSentByMe && message.isUnread && message.id != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ref.read(messageProvider.notifier).markAsRead(message.id!);
@@ -365,21 +374,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     color: _getMessageColor(message, isSentByMe),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text(
-                    message.content ?? '',
-                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                  child: InkWell(
+                    onLongPress: () {
+                      if (isSentByMe) {
+                        _showMessageOptions(context, message);
+                      }
+                    },
+                    child: Text(
+                      message.content ?? '',
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Message status indicator (only for sent messages)
                     if (isSentByMe) ...[
                       _buildMessageStatusIndicator(message),
                       const SizedBox(width: 8),
                     ],
-                    // Unread indicator for received messages
                     if (!isSentByMe && message.isUnread) ...[
                       Container(
                         width: 8,
@@ -400,7 +414,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       ),
                       const SizedBox(width: 8),
                     ],
-                    // Timestamp for all messages
                     if (message.createdAt != null)
                       Text(
                         _formatMessageTime(message.createdAt!),
@@ -419,21 +432,226 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
+  void _showMessageOptions(BuildContext context, MessageModel message) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black54,
+      isScrollControlled: true,
+      builder: (context) => Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ✅ Quick reaction pill — emoji_picker_flutter handles font rendering
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2C2C2E),
+              borderRadius: BorderRadius.circular(40),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                ..._quickReactions.map((emoji) {
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                      // Handle reaction with emoji string
+                    },
+                    // ✅ emoji_picker_flutter renders emoji correctly on Android
+                    child: Text(
+                      emoji,
+                      style: TextStyle(
+                        fontSize:
+                            28 *
+                            (foundation.defaultTargetPlatform ==
+                                    TargetPlatform.iOS
+                                ? 1.20
+                                : 1.0),
+                      ),
+                    ),
+                  );
+                }),
+                // ✅ + button opens full EmojiPicker
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showFullEmojiPicker(context, message);
+                  },
+                  child: Container(
+                    width: 34,
+                    height: 34,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF3A3A3C),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.add, color: Colors.white, size: 18),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Message bubble preview
+          Align(
+            alignment: Alignment.centerRight,
+            child: Container(
+              margin: const EdgeInsets.only(right: 16, bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.blue,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                message.content ?? '',
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+              ),
+            ),
+          ),
+
+          // Action buttons panel
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2C2C2E),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              children: [
+                _buildMessengerOption(
+                  label: 'Reply',
+                  icon: Icons.reply,
+                  onTap: () => Navigator.pop(context),
+                ),
+                _buildDivider(),
+                _buildMessengerOption(
+                  label: 'Copy',
+                  icon: Icons.copy,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Clipboard.setData(
+                      ClipboardData(text: message.content ?? ''),
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Copied to clipboard')),
+                    );
+                  },
+                ),
+                _buildDivider(),
+                _buildMessengerOption(
+                  label: 'Delete',
+                  icon: Icons.delete,
+                  isDestructive: true,
+                  onTap: () => Navigator.pop(context),
+                ),
+                _buildDivider(),
+                _buildMessengerOption(
+                  label: 'More',
+                  icon: Icons.more_horiz,
+                  onTap: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+
+          Container(height: MediaQuery.of(context).padding.bottom + 16),
+        ],
+      ),
+    );
+  }
+
+  // ✅ Full EmojiPicker bottom sheet
+  void _showFullEmojiPicker(BuildContext context, MessageModel message) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF2C2C2E),
+      isScrollControlled: true,
+      builder: (context) => SizedBox(
+        height: 350,
+        child: EmojiPicker(
+          onEmojiSelected: (category, emoji) {
+            Navigator.pop(context);
+            // Handle selected emoji: emoji.emoji
+          },
+          config: Config(
+            height: 350,
+            checkPlatformCompatibility: true,
+            emojiViewConfig: EmojiViewConfig(
+              backgroundColor: const Color(0xFF2C2C2E),
+              // ✅ Required fix from official docs for correct sizing
+              emojiSizeMax:
+                  28 *
+                  (foundation.defaultTargetPlatform == TargetPlatform.iOS
+                      ? 1.20
+                      : 1.0),
+            ),
+            searchViewConfig: const SearchViewConfig(
+              backgroundColor: Color(0xFF2C2C2E),
+              buttonIconColor: Colors.white,
+            ),
+            categoryViewConfig: const CategoryViewConfig(
+              backgroundColor: Color(0xFF2C2C2E),
+              iconColorSelected: Colors.blue,
+              iconColor: Colors.grey,
+              indicatorColor: Colors.blue,
+            ),
+            bottomActionBarConfig: const BottomActionBarConfig(
+              backgroundColor: Color(0xFF2C2C2E),
+              buttonIconColor: Colors.white,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMessengerOption({
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+    bool isDestructive = false,
+  }) {
+    final color = isDestructive ? Colors.redAccent : Colors.white;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: TextStyle(color: color, fontSize: 16)),
+            Icon(icon, color: color, size: 22),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDivider() {
+    return const Divider(
+      height: 1,
+      thickness: 0.5,
+      color: Colors.white12,
+      indent: 20,
+      endIndent: 20,
+    );
+  }
+
   Color _getMessageColor(MessageModel message, bool isSentByMe) {
     if (!isSentByMe) return const Color(0xFF2C2C2E);
 
-    // Different colors based on message status
     switch (message.status) {
       case MessageStatus.sending:
-        return Colors.blue.shade300; // Lighter blue for sending
+        return Colors.blue.shade300;
       case MessageStatus.sent:
-        return Colors.blue.shade600; // Normal blue for sent
+        return Colors.blue.shade600;
       case MessageStatus.delivered:
-        return Colors.blue.shade700; // Darker blue for delivered
+        return Colors.blue.shade700;
       case MessageStatus.read:
-        return Colors.blue.shade800; // Darkest blue for read
+        return Colors.blue.shade800;
       case MessageStatus.failed:
-        return Colors.red.shade400; // Red for failed
+        return Colors.red.shade400;
     }
   }
 
@@ -452,22 +670,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
             ),
             const SizedBox(width: 4),
-            Text(
+            const Text(
               'Sending...',
               style: TextStyle(color: Colors.white70, fontSize: 11),
             ),
           ],
         );
-
       case MessageStatus.sent:
-        return Icon(Icons.done, size: 16, color: Colors.white70);
-
+        return const Icon(Icons.done, size: 16, color: Colors.white70);
       case MessageStatus.delivered:
-        return Icon(Icons.done_all, size: 16, color: Colors.white70);
-
+        return const Icon(Icons.done_all, size: 16, color: Colors.white70);
       case MessageStatus.read:
-        return Icon(Icons.done_all, size: 16, color: const Color(0xFF0D7FF2));
-
+        return const Icon(Icons.done_all, size: 16, color: Color(0xFF0D7FF2));
       case MessageStatus.failed:
         return Row(
           mainAxisSize: MainAxisSize.min,
@@ -481,7 +695,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             const SizedBox(width: 4),
             GestureDetector(
               onTap: () {
-                // Retry sending the message
                 if (message.id != null) {
                   ref
                       .read(messageProvider.notifier)
@@ -550,7 +763,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
           const SizedBox(width: 8),
           Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: Colors.blue,
               shape: BoxShape.circle,
             ),
@@ -564,7 +777,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  // Helper method to count unread messages
   int _getUnreadCount(List<MessageModel> messages) {
     return messages
         .where(
@@ -573,12 +785,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         .length;
   }
 
-  // Helper method to mark all messages as read
   Future<void> _markAllAsRead(List<MessageModel> messages) async {
     try {
       talker.info('Marking all messages as read');
       final messageNotifier = ref.read(messageProvider.notifier);
-
       for (final message in messages) {
         if (message.senderId != widget.senderId &&
             message.isUnread &&
