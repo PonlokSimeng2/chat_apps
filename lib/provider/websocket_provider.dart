@@ -279,15 +279,15 @@ class WebSocketConnectionState {
 }
 
 // Utility provider for WebSocket status
-@riverpod
-bool isWebSocketConnected(Ref ref) {
-  final wsState = ref.watch(webSocketNotifierProvider);
-  return wsState.value?.status == WebSocketStatus.connected;
-}
+// @riverpod
+// bool isWebSocketConnected(Ref ref) {
+//   final wsState = ref.watch(webSocketNotifierProvider);
+//   return wsState.value?.status == WebSocketStatus.connected;
+// }
 
-// Provider for WebSocket status enum
-@riverpod
-WebSocketStatus webSocketStatus(Ref ref) {
-  final wsState = ref.watch(webSocketNotifierProvider);
-  return wsState.value?.status ?? WebSocketStatus.disconnected;
-}
+// // Provider for WebSocket status enum
+// @riverpod
+// WebSocketStatus webSocketStatus(Ref ref) {
+//   final wsState = ref.watch(webSocketNotifierProvider);
+//   return wsState.value?.status ?? WebSocketStatus.disconnected;
+// }

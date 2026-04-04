@@ -3,6 +3,7 @@ import 'package:chat_apps/page/chat_list_page.dart';
 import 'package:chat_apps/page/profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 // Providers
 final selectedTabProvider = StateProvider<int>((ref) => 0);

@@ -6,349 +6,308 @@ part of 'conversation_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$conversationNotifierHash() =>
-    r'aa2ac84158f5b63a843ab2670de06a0f22a85030';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [ConversationNotifier].
 @ProviderFor(ConversationNotifier)
-final conversationNotifierProvider =
-    NotifierProvider<
-      ConversationNotifier,
-      AsyncValue<List<ConversationModel>>
-    >.internal(
-      ConversationNotifier.new,
-      name: r'conversationNotifierProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$conversationNotifierHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+final conversationProvider = ConversationNotifierProvider._();
 
-typedef _$ConversationNotifier = Notifier<AsyncValue<List<ConversationModel>>>;
-String _$singleConversationNotifierHash() =>
-    r'07d3bc1319571aafe88ce988b4bb1bc5cf32c263';
-
-/// Copied from Dart SDK
-class _SystemHash {
-  _SystemHash._();
-
-  static int combine(int hash, int value) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + value);
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
-    return hash ^ (hash >> 6);
-  }
-
-  static int finish(int hash) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
-    // ignore: parameter_assignments
-    hash = hash ^ (hash >> 11);
-    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
-  }
-}
-
-abstract class _$SingleConversationNotifier
-    extends BuildlessAutoDisposeNotifier<AsyncValue<ConversationModel?>> {
-  late final int conversationId;
-
-  AsyncValue<ConversationModel?> build(int conversationId);
-}
-
-/// See also [SingleConversationNotifier].
-@ProviderFor(SingleConversationNotifier)
-const singleConversationNotifierProvider = SingleConversationNotifierFamily();
-
-/// See also [SingleConversationNotifier].
-class SingleConversationNotifierFamily
-    extends Family<AsyncValue<ConversationModel?>> {
-  /// See also [SingleConversationNotifier].
-  const SingleConversationNotifierFamily();
-
-  /// See also [SingleConversationNotifier].
-  SingleConversationNotifierProvider call(int conversationId) {
-    return SingleConversationNotifierProvider(conversationId);
-  }
-
-  @override
-  SingleConversationNotifierProvider getProviderOverride(
-    covariant SingleConversationNotifierProvider provider,
-  ) {
-    return call(provider.conversationId);
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'singleConversationNotifierProvider';
-}
-
-/// See also [SingleConversationNotifier].
-class SingleConversationNotifierProvider
+final class ConversationNotifierProvider
     extends
-        AutoDisposeNotifierProviderImpl<
-          SingleConversationNotifier,
-          AsyncValue<ConversationModel?>
+        $NotifierProvider<
+          ConversationNotifier,
+          AsyncValue<List<ConversationModel>>
         > {
-  /// See also [SingleConversationNotifier].
-  SingleConversationNotifierProvider(int conversationId)
-    : this._internal(
-        () => SingleConversationNotifier()..conversationId = conversationId,
-        from: singleConversationNotifierProvider,
-        name: r'singleConversationNotifierProvider',
-        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-            ? null
-            : _$singleConversationNotifierHash,
-        dependencies: SingleConversationNotifierFamily._dependencies,
-        allTransitiveDependencies:
-            SingleConversationNotifierFamily._allTransitiveDependencies,
-        conversationId: conversationId,
+  ConversationNotifierProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'conversationProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
       );
 
-  SingleConversationNotifierProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.conversationId,
-  }) : super.internal();
-
-  final int conversationId;
-
   @override
-  AsyncValue<ConversationModel?> runNotifierBuild(
-    covariant SingleConversationNotifier notifier,
-  ) {
-    return notifier.build(conversationId);
-  }
+  String debugGetCreateSourceHash() => _$conversationNotifierHash();
 
+  @$internal
   @override
-  Override overrideWith(SingleConversationNotifier Function() create) {
-    return ProviderOverride(
+  ConversationNotifier create() => ConversationNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AsyncValue<List<ConversationModel>> value) {
+    return $ProviderOverride(
       origin: this,
-      override: SingleConversationNotifierProvider._internal(
-        () => create()..conversationId = conversationId,
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        conversationId: conversationId,
+      providerOverride: $SyncValueProvider<AsyncValue<List<ConversationModel>>>(
+        value,
       ),
     );
   }
+}
+
+String _$conversationNotifierHash() =>
+    r'aa2ac84158f5b63a843ab2670de06a0f22a85030';
+
+abstract class _$ConversationNotifier
+    extends $Notifier<AsyncValue<List<ConversationModel>>> {
+  AsyncValue<List<ConversationModel>> build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref =
+        this.ref
+            as $Ref<
+              AsyncValue<List<ConversationModel>>,
+              AsyncValue<List<ConversationModel>>
+            >;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<
+                AsyncValue<List<ConversationModel>>,
+                AsyncValue<List<ConversationModel>>
+              >,
+              AsyncValue<List<ConversationModel>>,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
+
+@ProviderFor(SingleConversationNotifier)
+final singleConversationProvider = SingleConversationNotifierFamily._();
+
+final class SingleConversationNotifierProvider
+    extends
+        $NotifierProvider<
+          SingleConversationNotifier,
+          AsyncValue<ConversationModel?>
+        > {
+  SingleConversationNotifierProvider._({
+    required SingleConversationNotifierFamily super.from,
+    required int super.argument,
+  }) : super(
+         retry: null,
+         name: r'singleConversationProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
 
   @override
-  AutoDisposeNotifierProviderElement<
-    SingleConversationNotifier,
-    AsyncValue<ConversationModel?>
-  >
-  createElement() {
-    return _SingleConversationNotifierProviderElement(this);
+  String debugGetCreateSourceHash() => _$singleConversationNotifierHash();
+
+  @override
+  String toString() {
+    return r'singleConversationProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  SingleConversationNotifier create() => SingleConversationNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AsyncValue<ConversationModel?> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AsyncValue<ConversationModel?>>(
+        value,
+      ),
+    );
   }
 
   @override
   bool operator ==(Object other) {
     return other is SingleConversationNotifierProvider &&
-        other.conversationId == conversationId;
+        other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, conversationId.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin SingleConversationNotifierRef
-    on AutoDisposeNotifierProviderRef<AsyncValue<ConversationModel?>> {
-  /// The parameter `conversationId` of this provider.
-  int get conversationId;
-}
+String _$singleConversationNotifierHash() =>
+    r'07d3bc1319571aafe88ce988b4bb1bc5cf32c263';
 
-class _SingleConversationNotifierProviderElement
-    extends
-        AutoDisposeNotifierProviderElement<
+final class SingleConversationNotifierFamily extends $Family
+    with
+        $ClassFamilyOverride<
           SingleConversationNotifier,
-          AsyncValue<ConversationModel?>
-        >
-    with SingleConversationNotifierRef {
-  _SingleConversationNotifierProviderElement(super.provider);
+          AsyncValue<ConversationModel?>,
+          AsyncValue<ConversationModel?>,
+          AsyncValue<ConversationModel?>,
+          int
+        > {
+  SingleConversationNotifierFamily._()
+    : super(
+        retry: null,
+        name: r'singleConversationProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  SingleConversationNotifierProvider call(int conversationId) =>
+      SingleConversationNotifierProvider._(
+        argument: conversationId,
+        from: this,
+      );
 
   @override
-  int get conversationId =>
-      (origin as SingleConversationNotifierProvider).conversationId;
+  String toString() => r'singleConversationProvider';
 }
 
-String _$conversationParticipantsNotifierHash() =>
-    r'5f81063dca04685179e3572663f8a9ebcff21134';
+abstract class _$SingleConversationNotifier
+    extends $Notifier<AsyncValue<ConversationModel?>> {
+  late final _$args = ref.$arg as int;
+  int get conversationId => _$args;
 
-abstract class _$ConversationParticipantsNotifier
-    extends
-        BuildlessAutoDisposeNotifier<AsyncValue<List<Map<String, dynamic>>>> {
-  late final int conversationId;
-
-  AsyncValue<List<Map<String, dynamic>>> build(int conversationId);
+  AsyncValue<ConversationModel?> build(int conversationId);
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref =
+        this.ref
+            as $Ref<
+              AsyncValue<ConversationModel?>,
+              AsyncValue<ConversationModel?>
+            >;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<
+                AsyncValue<ConversationModel?>,
+                AsyncValue<ConversationModel?>
+              >,
+              AsyncValue<ConversationModel?>,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, () => build(_$args));
+  }
 }
 
-/// See also [ConversationParticipantsNotifier].
 @ProviderFor(ConversationParticipantsNotifier)
-const conversationParticipantsNotifierProvider =
-    ConversationParticipantsNotifierFamily();
+final conversationParticipantsProvider =
+    ConversationParticipantsNotifierFamily._();
 
-/// See also [ConversationParticipantsNotifier].
-class ConversationParticipantsNotifierFamily
-    extends Family<AsyncValue<List<Map<String, dynamic>>>> {
-  /// See also [ConversationParticipantsNotifier].
-  const ConversationParticipantsNotifierFamily();
-
-  /// See also [ConversationParticipantsNotifier].
-  ConversationParticipantsNotifierProvider call(int conversationId) {
-    return ConversationParticipantsNotifierProvider(conversationId);
-  }
-
-  @override
-  ConversationParticipantsNotifierProvider getProviderOverride(
-    covariant ConversationParticipantsNotifierProvider provider,
-  ) {
-    return call(provider.conversationId);
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'conversationParticipantsNotifierProvider';
-}
-
-/// See also [ConversationParticipantsNotifier].
-class ConversationParticipantsNotifierProvider
+final class ConversationParticipantsNotifierProvider
     extends
-        AutoDisposeNotifierProviderImpl<
+        $NotifierProvider<
           ConversationParticipantsNotifier,
           AsyncValue<List<Map<String, dynamic>>>
         > {
-  /// See also [ConversationParticipantsNotifier].
-  ConversationParticipantsNotifierProvider(int conversationId)
-    : this._internal(
-        () =>
-            ConversationParticipantsNotifier()..conversationId = conversationId,
-        from: conversationParticipantsNotifierProvider,
-        name: r'conversationParticipantsNotifierProvider',
-        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-            ? null
-            : _$conversationParticipantsNotifierHash,
-        dependencies: ConversationParticipantsNotifierFamily._dependencies,
-        allTransitiveDependencies:
-            ConversationParticipantsNotifierFamily._allTransitiveDependencies,
-        conversationId: conversationId,
-      );
-
-  ConversationParticipantsNotifierProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.conversationId,
-  }) : super.internal();
-
-  final int conversationId;
+  ConversationParticipantsNotifierProvider._({
+    required ConversationParticipantsNotifierFamily super.from,
+    required int super.argument,
+  }) : super(
+         retry: null,
+         name: r'conversationParticipantsProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
 
   @override
-  AsyncValue<List<Map<String, dynamic>>> runNotifierBuild(
-    covariant ConversationParticipantsNotifier notifier,
-  ) {
-    return notifier.build(conversationId);
+  String debugGetCreateSourceHash() => _$conversationParticipantsNotifierHash();
+
+  @override
+  String toString() {
+    return r'conversationParticipantsProvider'
+        ''
+        '($argument)';
   }
 
+  @$internal
   @override
-  Override overrideWith(ConversationParticipantsNotifier Function() create) {
-    return ProviderOverride(
+  ConversationParticipantsNotifier create() =>
+      ConversationParticipantsNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AsyncValue<List<Map<String, dynamic>>> value) {
+    return $ProviderOverride(
       origin: this,
-      override: ConversationParticipantsNotifierProvider._internal(
-        () => create()..conversationId = conversationId,
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        conversationId: conversationId,
-      ),
+      providerOverride:
+          $SyncValueProvider<AsyncValue<List<Map<String, dynamic>>>>(value),
     );
-  }
-
-  @override
-  AutoDisposeNotifierProviderElement<
-    ConversationParticipantsNotifier,
-    AsyncValue<List<Map<String, dynamic>>>
-  >
-  createElement() {
-    return _ConversationParticipantsNotifierProviderElement(this);
   }
 
   @override
   bool operator ==(Object other) {
     return other is ConversationParticipantsNotifierProvider &&
-        other.conversationId == conversationId;
+        other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, conversationId.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin ConversationParticipantsNotifierRef
-    on AutoDisposeNotifierProviderRef<AsyncValue<List<Map<String, dynamic>>>> {
-  /// The parameter `conversationId` of this provider.
-  int get conversationId;
-}
+String _$conversationParticipantsNotifierHash() =>
+    r'5f81063dca04685179e3572663f8a9ebcff21134';
 
-class _ConversationParticipantsNotifierProviderElement
-    extends
-        AutoDisposeNotifierProviderElement<
+final class ConversationParticipantsNotifierFamily extends $Family
+    with
+        $ClassFamilyOverride<
           ConversationParticipantsNotifier,
-          AsyncValue<List<Map<String, dynamic>>>
-        >
-    with ConversationParticipantsNotifierRef {
-  _ConversationParticipantsNotifierProviderElement(super.provider);
+          AsyncValue<List<Map<String, dynamic>>>,
+          AsyncValue<List<Map<String, dynamic>>>,
+          AsyncValue<List<Map<String, dynamic>>>,
+          int
+        > {
+  ConversationParticipantsNotifierFamily._()
+    : super(
+        retry: null,
+        name: r'conversationParticipantsProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  ConversationParticipantsNotifierProvider call(int conversationId) =>
+      ConversationParticipantsNotifierProvider._(
+        argument: conversationId,
+        from: this,
+      );
 
   @override
-  int get conversationId =>
-      (origin as ConversationParticipantsNotifierProvider).conversationId;
+  String toString() => r'conversationParticipantsProvider';
 }
 
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+abstract class _$ConversationParticipantsNotifier
+    extends $Notifier<AsyncValue<List<Map<String, dynamic>>>> {
+  late final _$args = ref.$arg as int;
+  int get conversationId => _$args;
+
+  AsyncValue<List<Map<String, dynamic>>> build(int conversationId);
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref =
+        this.ref
+            as $Ref<
+              AsyncValue<List<Map<String, dynamic>>>,
+              AsyncValue<List<Map<String, dynamic>>>
+            >;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<
+                AsyncValue<List<Map<String, dynamic>>>,
+                AsyncValue<List<Map<String, dynamic>>>
+              >,
+              AsyncValue<List<Map<String, dynamic>>>,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, () => build(_$args));
+  }
+}

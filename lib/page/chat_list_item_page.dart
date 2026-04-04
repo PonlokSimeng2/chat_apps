@@ -86,7 +86,7 @@ class _ChatListItemPageState extends ConsumerState<ChatListItemPage> {
 
     try {
       // Load last message and unread count in parallel
-      final messageNotifier = ref.read(messageNotifierProvider.notifier);
+      final messageNotifier = ref.read(messageProvider.notifier);
 
       final lastMessageFuture = messageNotifier.getLastMessage(
         conversationId: widget.conversationId,
@@ -97,10 +97,9 @@ class _ChatListItemPageState extends ConsumerState<ChatListItemPage> {
         conversationId: widget.conversationId,
       );
 
-      final results = await Future.wait([
-        lastMessageFuture,
-        unreadCountFuture,
-      ]);
+      final results = await Future.wait(
+        [lastMessageFuture, unreadCountFuture] as Iterable<Future<dynamic>>,
+      );
 
       final lastMsg = results[0] as MessageModel?;
       final unread = results[1] as int;
@@ -125,7 +124,7 @@ class _ChatListItemPageState extends ConsumerState<ChatListItemPage> {
       onTap: () async {
         // Mark messages as read when user taps on the chat item
         if (unreadCount > 0) {
-          final messageNotifier = ref.read(messageNotifierProvider.notifier);
+          final messageNotifier = ref.read(messageProvider.notifier);
           await messageNotifier.markAllMessagesAsRead(
             userId: widget.currentUserId,
             conversationId: widget.conversationId,
@@ -142,7 +141,8 @@ class _ChatListItemPageState extends ConsumerState<ChatListItemPage> {
             builder: (context) => ChatScreen(
               senderId: widget.currentUserId,
               otherUserName: widget.user.displayName,
-              otherUserAvatar: widget.user.profilePictureUrl ??
+              otherUserAvatar:
+                  widget.user.profilePictureUrl ??
                   'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
               receiverId: widget.user.id?.toString() ?? '',
               conversationId: widget.conversationId,
@@ -238,11 +238,14 @@ class _ChatListItemPageState extends ConsumerState<ChatListItemPage> {
                         ),
                       ),
                       // Message time
-                      if (_lastMessage != null && _lastMessage!.createdAt != null)
+                      if (_lastMessage != null &&
+                          _lastMessage!.createdAt != null)
                         Text(
                           _formatMessageTime(_lastMessage!.createdAt!),
                           style: TextStyle(
-                            color: unreadCount > 0 ? const Color(0xFF0D7FF2) : Colors.grey,
+                            color: unreadCount > 0
+                                ? const Color(0xFF0D7FF2)
+                                : Colors.grey,
                             fontSize: 12,
                           ),
                         ),
@@ -266,7 +269,8 @@ class _ChatListItemPageState extends ConsumerState<ChatListItemPage> {
                         ),
                       ),
                       // Message status indicator for sent messages
-                      if (_lastMessage != null && _lastMessage!.senderId == widget.currentUserId)
+                      if (_lastMessage != null &&
+                          _lastMessage!.senderId == widget.currentUserId)
                         _buildMessageStatusIndicator(),
                     ],
                   ),
@@ -279,10 +283,7 @@ class _ChatListItemPageState extends ConsumerState<ChatListItemPage> {
             // Unread count badge
             if (unreadCount > 0)
               Container(
-                constraints: const BoxConstraints(
-                  minWidth: 24,
-                  minHeight: 24,
-                ),
+                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                 decoration: BoxDecoration(
                   color: const Color(0xFF0D7FF2),

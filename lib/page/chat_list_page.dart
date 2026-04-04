@@ -3,6 +3,7 @@ import 'package:chat_apps/page/chat_screen.dart';
 import 'package:chat_apps/provider/user_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -208,8 +209,10 @@ class ChatListScreen extends ConsumerWidget {
                               },
                               child: ChatListItemPage(
                                 user: user,
-                                conversationId: 1, // You'll need to replace this with actual conversation ID
-                                currentUserId: currentUserData?.id?.toString() ?? '',
+                                conversationId:
+                                    1, // You'll need to replace this with actual conversation ID
+                                currentUserId:
+                                    currentUserData?.id?.toString() ?? '',
                               ),
                             );
                           },
