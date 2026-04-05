@@ -764,7 +764,7 @@ class MessageBubble extends ConsumerWidget {
                     // ✅ Emoji stack badge — overlaps bottom corner
                     if (message.id != null)
                       Positioned(
-                        bottom: -14,
+                        bottom: -19,
                         right: isSentByMe ? 8 : null,
                         left: isSentByMe ? null : 8,
                         child: _EmojiStackBadge(
