@@ -92,14 +92,13 @@ class ChatHomeScreen extends ConsumerWidget {
       );
     }
 
-    // Mobile and Tablet layout with bottom navigation
     return Scaffold(
       backgroundColor: const Color(0xFF111827),
       body: SafeArea(
         child: Column(
           children: [
             // Responsive breakpoint indicator using ResponsiveHelper
-            ResponsiveHelper.debugBreakpointIndicator(context),
+            //ResponsiveHelper.debugBreakpointIndicator(context),
             // Main content
             Expanded(
               child: IndexedStack(

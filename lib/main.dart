@@ -153,13 +153,20 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) return;
     try {
-      await Supabase.instance.client.from('users').update({
-        'is_online': isOnline,
-        'updated_at': DateTime.now().toIso8601String(),
-        if (!isOnline) 'last_seen_at': DateTime.now().toIso8601String(),
-      }).eq('id', userId);
+      await Supabase.instance.client
+          .from('users')
+          .update({
+            'is_online': isOnline,
+            'updated_at': DateTime.now().toIso8601String(),
+            if (!isOnline) 'last_seen_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', userId);
     } catch (e, st) {
-      talker.warning('Failed to update online status from app lifecycle', e, st);
+      talker.warning(
+        'Failed to update online status from app lifecycle',
+        e,
+        st,
+      );
     }
   }
 

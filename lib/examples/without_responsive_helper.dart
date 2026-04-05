@@ -24,11 +24,31 @@ class ChatListPageWithoutHelper extends StatelessWidget {
     final isDesktop = ResponsiveBreakpoints.of(context).isDesktop;
 
     // ❌ Manual responsive calculations in EVERY widget
-    final headerPadding = isDesktop ? 24.0 : isTablet ? 20.0 : 16.0;
-    final avatarSize = isDesktop ? 56.0 : isTablet ? 48.0 : 40.0;
-    final titleFontSize = isDesktop ? 28.0 : isTablet ? 24.0 : 20.0;
-    final searchHeight = isDesktop ? 60.0 : isTablet ? 54.0 : 48.0;
-    final searchHorizontalPadding = isDesktop ? 24.0 : isTablet ? 20.0 : 16.0;
+    final headerPadding = isDesktop
+        ? 24.0
+        : isTablet
+        ? 20.0
+        : 16.0;
+    final avatarSize = isDesktop
+        ? 56.0
+        : isTablet
+        ? 48.0
+        : 40.0;
+    final titleFontSize = isDesktop
+        ? 28.0
+        : isTablet
+        ? 24.0
+        : 20.0;
+    final searchHeight = isDesktop
+        ? 60.0
+        : isTablet
+        ? 54.0
+        : 48.0;
+    final searchHorizontalPadding = isDesktop
+        ? 24.0
+        : isTablet
+        ? 20.0
+        : 16.0;
     final searchBorderRadius = isDesktop ? 30.0 : 24.0;
     final searchFontSize = isDesktop ? 18.0 : 16.0;
 
@@ -153,11 +173,31 @@ class _ChatTileWithoutHelper extends StatelessWidget {
     final isDesktop = ResponsiveBreakpoints.of(context).isDesktop;
 
     // ❌ Same manual calculations AGAIN
-    final avatarSize = isDesktop ? 64.0 : isTablet ? 60.0 : 56.0;
-    final horizontalPadding = isDesktop ? 20.0 : isTablet ? 18.0 : 16.0;
-    final verticalPadding = isDesktop ? 16.0 : isTablet ? 14.0 : 12.0;
-    final fontSizeName = isDesktop ? 18.0 : isTablet ? 17.0 : 16.0;
-    final fontSizeMessage = isDesktop ? 16.0 : isTablet ? 15.0 : 14.0;
+    final avatarSize = isDesktop
+        ? 64.0
+        : isTablet
+        ? 60.0
+        : 56.0;
+    final horizontalPadding = isDesktop
+        ? 20.0
+        : isTablet
+        ? 18.0
+        : 16.0;
+    final verticalPadding = isDesktop
+        ? 16.0
+        : isTablet
+        ? 14.0
+        : 12.0;
+    final fontSizeName = isDesktop
+        ? 18.0
+        : isTablet
+        ? 17.0
+        : 16.0;
+    final fontSizeMessage = isDesktop
+        ? 16.0
+        : isTablet
+        ? 15.0
+        : 14.0;
     final fontSizeTime = isDesktop ? 14.0 : 12.0;
 
     return InkWell(
@@ -255,10 +295,26 @@ class ResponsiveButtonWithoutHelper extends StatelessWidget {
     final isDesktop = ResponsiveBreakpoints.of(context).isDesktop;
 
     // ❌ Same manual calculations YET AGAIN
-    final buttonHeight = isDesktop ? 56.0 : isTablet ? 52.0 : 48.0;
-    final fontSize = isDesktop ? 18.0 : isTablet ? 16.0 : 14.0;
-    final borderRadius = isDesktop ? 16.0 : isTablet ? 14.0 : 12.0;
-    final horizontalPadding = isDesktop ? 32.0 : isTablet ? 24.0 : 16.0;
+    final buttonHeight = isDesktop
+        ? 56.0
+        : isTablet
+        ? 52.0
+        : 48.0;
+    final fontSize = isDesktop
+        ? 18.0
+        : isTablet
+        ? 16.0
+        : 14.0;
+    final borderRadius = isDesktop
+        ? 16.0
+        : isTablet
+        ? 14.0
+        : 12.0;
+    final horizontalPadding = isDesktop
+        ? 32.0
+        : isTablet
+        ? 24.0
+        : 16.0;
 
     return SizedBox(
       width: double.infinity,
@@ -298,11 +354,31 @@ class ResponsiveGridWithoutHelper extends StatelessWidget {
     final isDesktop = ResponsiveBreakpoints.of(context).isDesktop;
 
     // ❌ Manual grid calculations
-    final crossAxisCount = isDesktop ? 4 : isTablet ? 3 : 2;
-    final childAspectRatio = isDesktop ? 1.2 : isTablet ? 1.1 : 1.0;
-    final crossAxisSpacing = isDesktop ? 16.0 : isTablet ? 12.0 : 8.0;
-    final mainAxisSpacing = isDesktop ? 16.0 : isTablet ? 12.0 : 8.0;
-    final padding = isDesktop ? 24.0 : isTablet ? 20.0 : 16.0;
+    final crossAxisCount = isDesktop
+        ? 4
+        : isTablet
+        ? 3
+        : 2;
+    final childAspectRatio = isDesktop
+        ? 1.2
+        : isTablet
+        ? 1.1
+        : 1.0;
+    final crossAxisSpacing = isDesktop
+        ? 16.0
+        : isTablet
+        ? 12.0
+        : 8.0;
+    final mainAxisSpacing = isDesktop
+        ? 16.0
+        : isTablet
+        ? 12.0
+        : 8.0;
+    final padding = isDesktop
+        ? 24.0
+        : isTablet
+        ? 20.0
+        : 16.0;
 
     return GridView.builder(
       padding: EdgeInsets.all(padding),
@@ -334,9 +410,21 @@ class _GridItemWithoutHelper extends StatelessWidget {
     final isDesktop = ResponsiveBreakpoints.of(context).isDesktop;
 
     // ❌ Manual calculations AGAIN AND AGAIN
-    final fontSize = isDesktop ? 16.0 : isTablet ? 14.0 : 12.0;
-    final borderRadius = isDesktop ? 12.0 : isTablet ? 10.0 : 8.0;
-    final padding = isDesktop ? 16.0 : isTablet ? 12.0 : 8.0;
+    final fontSize = isDesktop
+        ? 16.0
+        : isTablet
+        ? 14.0
+        : 12.0;
+    final borderRadius = isDesktop
+        ? 12.0
+        : isTablet
+        ? 10.0
+        : 8.0;
+    final padding = isDesktop
+        ? 16.0
+        : isTablet
+        ? 12.0
+        : 8.0;
 
     return Container(
       padding: EdgeInsets.all(padding),

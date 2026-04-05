@@ -16,7 +16,7 @@ class ConversationModel {
     this.createdAt,
     this.updatedAt,
   });
-  
+
   factory ConversationModel.fromJson(Map<String, dynamic> json) {
     return ConversationModel(
       id: json['id'] != null ? int.tryParse(json['id'].toString()) : null,
@@ -24,8 +24,12 @@ class ConversationModel {
       description: json['description']?.toString(),
       createdBy: json['created_by'].toString(),
       isActive: json['is_active'] ?? true,
-      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
+          : null,
     );
   }
 

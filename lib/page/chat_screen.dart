@@ -6,6 +6,7 @@ import '../model/message_model.dart';
 import '../model/message_status.dart';
 import '../provider/message_provider.dart';
 import '../provider/error_provider.dart';
+import '../provider/emoji_provider.dart'; // ADD THIS
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../main.dart';
@@ -33,16 +34,6 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-
-  // ✅ Quick reaction emojis — rendered by emoji_picker_flutter font (works on Android)
-  static const List<String> _quickReactions = [
-    '❤️',
-    '😆',
-    '😮',
-    '😢',
-    '😡',
-    '👍',
-  ];
 
   @override
   void initState() {
@@ -376,9 +367,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ),
                   child: InkWell(
                     onLongPress: () {
-                      if (isSentByMe) {
-                        _showMessageOptions(context, message);
-                      }
+                      _showMessageOptions(context, message, isSentByMe);
                     },
                     child: Text(
                       message.content ?? '',
@@ -432,136 +421,220 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  void _showMessageOptions(BuildContext context, MessageModel message) {
+  void _showMessageOptions(
+    BuildContext context,
+    MessageModel message,
+    bool isSentByMe,
+  ) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black54,
       isScrollControlled: true,
-      builder: (context) => Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // ✅ Quick reaction pill — emoji_picker_flutter handles font rendering
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF2C2C2E),
-              borderRadius: BorderRadius.circular(40),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                ..._quickReactions.map((emoji) {
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context);
-                      // Handle reaction with emoji string
-                    },
-                    // ✅ emoji_picker_flutter renders emoji correctly on Android
-                    child: Text(
-                      emoji,
-                      style: TextStyle(
-                        fontSize:
-                            28 *
-                            (foundation.defaultTargetPlatform ==
-                                    TargetPlatform.iOS
-                                ? 1.20
-                                : 1.0),
+      builder: (context) => Consumer(
+        builder: (context, ref, _) {
+          // ✅ Fetch emojis from Supabase table
+          final emojisAsync = ref.watch(emojisProvider);
+
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Quick reaction pill
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2C2C2E),
+                  borderRadius: BorderRadius.circular(40),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // ✅ Emojis from table (category: reaction)
+                    Expanded(
+                      child: emojisAsync.when(
+                        loading: () => const Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        error: (_, __) => Row(
+                          // fallback to hardcoded if fetch fails
+                          children: ['❤️', '😆', '😮', '😢', '😡', '👍']
+                              .map(
+                                (e) => GestureDetector(
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    _handleEmojiReaction(e, message);
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                    ),
+                                    child: Text(
+                                      e,
+                                      style: const TextStyle(fontSize: 28),
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                        data: (emojis) => Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          // ✅ Only show 'reaction' category in quick bar
+                          children: emojis
+                              .where((e) => e.category == 'reaction')
+                              .map(
+                                (e) => GestureDetector(
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    _handleEmojiReaction(e.emoji, message);
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                    ),
+                                    child: Text(
+                                      e.emoji,
+                                      style: TextStyle(
+                                        fontSize:
+                                            28 *
+                                            (foundation.defaultTargetPlatform ==
+                                                    TargetPlatform.iOS
+                                                ? 1.20
+                                                : 1.0),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
                       ),
                     ),
-                  );
-                }),
-                // ✅ + button opens full EmojiPicker
-                GestureDetector(
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showFullEmojiPicker(context, message);
-                  },
-                  child: Container(
-                    width: 34,
-                    height: 34,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF3A3A3C),
-                      shape: BoxShape.circle,
+
+                    // + button opens full EmojiPicker
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showFullEmojiPicker(context, message);
+                      },
+                      child: Container(
+                        width: 34,
+                        height: 34,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF3A3A3C),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.add,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
                     ),
-                    child: const Icon(Icons.add, color: Colors.white, size: 18),
+                  ],
+                ),
+              ),
+
+              // Message bubble preview
+              Align(
+                alignment: isSentByMe
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
+                child: Container(
+                  margin: const EdgeInsets.only(right: 16, bottom: 8, left: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSentByMe ? Colors.blue : Color(0xFF2C2C2E),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    message.content ?? '',
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
                   ),
                 ),
-              ],
-            ),
-          ),
-
-          // Message bubble preview
-          Align(
-            alignment: Alignment.centerRight,
-            child: Container(
-              margin: const EdgeInsets.only(right: 16, bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.blue,
-                borderRadius: BorderRadius.circular(20),
               ),
-              child: Text(
-                message.content ?? '',
-                style: const TextStyle(color: Colors.white, fontSize: 16),
+
+              // Action buttons panel
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2C2C2E),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Column(
+                  children: [
+                    _buildMessengerOption(
+                      label: 'Reply',
+                      icon: Icons.reply,
+                      onTap: () => Navigator.pop(context),
+                    ),
+                    _buildDivider(),
+                    _buildMessengerOption(
+                      label: 'Copy',
+                      icon: Icons.copy,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Clipboard.setData(
+                          ClipboardData(text: message.content ?? ''),
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Copied to clipboard')),
+                        );
+                      },
+                    ),
+                    _buildDivider(),
+                    _buildMessengerOption(
+                      label: 'Delete',
+                      icon: Icons.delete,
+                      isDestructive: true,
+                      onTap: () => Navigator.pop(context),
+                    ),
+                    _buildDivider(),
+                    _buildMessengerOption(
+                      label: 'More',
+                      icon: Icons.more_horiz,
+                      onTap: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
 
-          // Action buttons panel
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF2C2C2E),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Column(
-              children: [
-                _buildMessengerOption(
-                  label: 'Reply',
-                  icon: Icons.reply,
-                  onTap: () => Navigator.pop(context),
-                ),
-                _buildDivider(),
-                _buildMessengerOption(
-                  label: 'Copy',
-                  icon: Icons.copy,
-                  onTap: () {
-                    Navigator.pop(context);
-                    Clipboard.setData(
-                      ClipboardData(text: message.content ?? ''),
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Copied to clipboard')),
-                    );
-                  },
-                ),
-                _buildDivider(),
-                _buildMessengerOption(
-                  label: 'Delete',
-                  icon: Icons.delete,
-                  isDestructive: true,
-                  onTap: () => Navigator.pop(context),
-                ),
-                _buildDivider(),
-                _buildMessengerOption(
-                  label: 'More',
-                  icon: Icons.more_horiz,
-                  onTap: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-          ),
-
-          Container(height: MediaQuery.of(context).padding.bottom + 16),
-        ],
+              Container(height: MediaQuery.of(context).padding.bottom + 16),
+            ],
+          );
+        },
       ),
     );
   }
 
-  // ✅ Full EmojiPicker bottom sheet
+  // ✅ Handle emoji reaction — insert into message_reactions table
+  void _handleEmojiReaction(String emoji, MessageModel message) {
+    try {
+      talker.info('Reacting to message ${message.id} with emoji: $emoji');
+      // TODO: call your reaction provider here
+      // ref.read(reactionNotifierProvider(message.id!).notifier)
+      //    .reactWithEmoji(emoji);
+    } catch (e, st) {
+      talker.error('Error reacting to message', e, st);
+    }
+  }
+
+  // Full EmojiPicker bottom sheet
   void _showFullEmojiPicker(BuildContext context, MessageModel message) {
     showModalBottomSheet(
       context: context,
@@ -572,14 +645,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         child: EmojiPicker(
           onEmojiSelected: (category, emoji) {
             Navigator.pop(context);
-            // Handle selected emoji: emoji.emoji
+            _handleEmojiReaction(emoji.emoji, message);
           },
           config: Config(
             height: 350,
             checkPlatformCompatibility: true,
             emojiViewConfig: EmojiViewConfig(
               backgroundColor: const Color(0xFF2C2C2E),
-              // ✅ Required fix from official docs for correct sizing
               emojiSizeMax:
                   28 *
                   (foundation.defaultTargetPlatform == TargetPlatform.iOS

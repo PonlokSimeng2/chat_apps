@@ -115,7 +115,7 @@ final class IsWebSocketConnectedProvider
 }
 
 String _$isWebSocketConnectedHash() =>
-    r'840999dce801a1de2b087cd604af5da329413e76';
+    r'56b1a7570fc4fa5c517c897498948cbc45918fab';
 
 @ProviderFor(webSocketStatus)
 final webSocketStatusProvider = WebSocketStatusProvider._();
@@ -157,4 +157,4 @@ final class WebSocketStatusProvider
   }
 }
 
-String _$webSocketStatusHash() => r'36f00562d60850b3c9ab90217e29843287a2f67d';
+String _$webSocketStatusHash() => r'9912033cf39a8d7881d5838966c07c083ed83546';

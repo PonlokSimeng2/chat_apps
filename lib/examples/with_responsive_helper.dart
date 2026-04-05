@@ -92,12 +92,16 @@ class _ResponsiveSearchBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: ResponsiveHelper.getPadding(context)),
+      padding: EdgeInsets.symmetric(
+        horizontal: ResponsiveHelper.getPadding(context),
+      ),
       child: Container(
         height: ResponsiveHelper.getSearchBarHeight(context),
         decoration: BoxDecoration(
           color: const Color(0xFF1F2937),
-          borderRadius: BorderRadius.circular(ResponsiveHelper.getBorderRadius(context) * 1.5),
+          borderRadius: BorderRadius.circular(
+            ResponsiveHelper.getBorderRadius(context) * 1.5,
+          ),
         ),
         child: TextField(
           decoration: InputDecoration(
@@ -143,7 +147,9 @@ class _ChatTileWithHelper extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: const Color(0xFF1E293B),
-          borderRadius: BorderRadius.circular(ResponsiveHelper.getBorderRadius(context)),
+          borderRadius: BorderRadius.circular(
+            ResponsiveHelper.getBorderRadius(context),
+          ),
         ),
         child: Row(
           children: [
@@ -169,7 +175,9 @@ class _ChatTileWithHelper extends StatelessWidget {
                           user.displayName,
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: ResponsiveHelper.getTitleFontSize(context),
+                            fontSize: ResponsiveHelper.getTitleFontSize(
+                              context,
+                            ),
                             fontWeight: FontWeight.w500,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -179,7 +187,9 @@ class _ChatTileWithHelper extends StatelessWidget {
                         '2m ago',
                         style: TextStyle(
                           color: Colors.grey,
-                          fontSize: ResponsiveHelper.getCaptionFontSize(context),
+                          fontSize: ResponsiveHelper.getCaptionFontSize(
+                            context,
+                          ),
                         ),
                       ),
                     ],
@@ -225,7 +235,9 @@ class ResponsiveButtonWithHelper extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF0D7FF2),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(ResponsiveHelper.getBorderRadius(context)),
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
           ),
         ),
         child: Text(
@@ -277,7 +289,9 @@ class _GridItemWithHelper extends StatelessWidget {
       padding: EdgeInsets.all(ResponsiveHelper.getSmallPadding(context)),
       decoration: BoxDecoration(
         color: const Color(0xFF1F2937),
-        borderRadius: BorderRadius.circular(ResponsiveHelper.getBorderRadius(context)),
+        borderRadius: BorderRadius.circular(
+          ResponsiveHelper.getBorderRadius(context),
+        ),
       ),
       child: Center(
         child: Text(
