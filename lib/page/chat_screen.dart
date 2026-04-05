@@ -4,9 +4,11 @@ import 'package:flutter/foundation.dart' as foundation;
 import 'package:flutter/services.dart';
 import '../model/message_model.dart';
 import '../model/message_status.dart';
+import '../model/message_reactions_model.dart';
 import '../provider/message_provider.dart';
 import '../provider/error_provider.dart';
-import '../provider/emoji_provider.dart'; // ADD THIS
+import '../provider/emoji_provider.dart';
+import '../provider/message_reactions_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../main.dart';
@@ -34,6 +36,7 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  int _previousMessageCount = 0;
 
   @override
   void initState() {
@@ -65,9 +68,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         talker.warning('Attempted to send empty message');
         return;
       }
-
       talker.info('Sending message: ${_messageController.text.trim()}');
-
       ref
           .read(messageProvider.notifier)
           .sendMessage(
@@ -76,7 +77,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             receiverId: widget.receiverId,
             content: _messageController.text.trim(),
           );
-
       _messageController.clear();
       _scrollToBottom();
     } catch (e, st) {
@@ -123,6 +123,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void _scrollToBottom() {
     try {
       Future.delayed(const Duration(milliseconds: 100), () {
+        if (!mounted) return;
         if (_scrollController.hasClients) {
           _scrollController.animateTo(
             _scrollController.position.maxScrollExtent,
@@ -133,13 +134,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       });
     } catch (e, st) {
       talker.error('Error scrolling to bottom', e, st);
-      ref
-          .read(errorProvider.notifier)
-          .addError(
-            'Chat scrolling issue',
-            details: e.toString(),
-            severity: ErrorSeverity.warning,
-          );
     }
   }
 
@@ -150,6 +144,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     super.dispose();
   }
 
+  void _handleEmojiReaction(String emoji, MessageModel message) {
+    try {
+      if (message.id == null) return;
+      talker.info('Reacting to message ${message.id} with emoji: $emoji');
+      ref
+          .read(messageReactionProvider.notifier)
+          .toggleEmojiReaction(
+            messageId: message.id!,
+            emoji: emoji,
+            currentUserId: widget.senderId,
+          );
+    } catch (e, st) {
+      talker.error('Error reacting to message', e, st);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final messagesState = ref.watch(messageProvider);
@@ -157,10 +167,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     ref.listen<AsyncValue<List<MessageModel>>>(messageProvider, (_, next) {
       try {
         if (next is AsyncData) {
-          talker.debug(
-            'New messages loaded: ${next.value?.length ?? 0} messages',
-          );
-          _scrollToBottom();
+          final newCount = next.value?.length ?? 0;
+          if (newCount > _previousMessageCount) {
+            _previousMessageCount = newCount;
+            _scrollToBottom();
+          }
         } else if (next is AsyncError) {
           talker.error('Error in messages state', next.error, next.stackTrace);
           ref
@@ -244,7 +255,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             builder: (context, ref, child) {
               final unreadCount = _getUnreadCount(messagesState.value ?? []);
               if (unreadCount == 0) return const SizedBox.shrink();
-
               return Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(
@@ -291,9 +301,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           Expanded(
             child: messagesState.when(
               data: (messages) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  _scrollToBottom();
-                });
+                if (_previousMessageCount == 0 && messages.isNotEmpty) {
+                  _previousMessageCount = messages.length;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _scrollToBottom();
+                  });
+                }
                 if (messages.isEmpty) {
                   return const Center(
                     child: Text(
@@ -309,7 +322,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   itemBuilder: (context, index) {
                     final message = messages[index];
                     final isSentByMe = message.senderId == widget.senderId;
-                    return _buildMessageBubble(message, isSentByMe);
+                    return MessageBubble(
+                      key: ValueKey('msg_${message.id}'),
+                      message: message,
+                      isSentByMe: isSentByMe,
+                      senderId: widget.senderId,
+                      otherUserAvatar: widget.otherUserAvatar,
+                      conversationId: widget.conversationId,
+                      receiverId: widget.receiverId,
+                      onLongPress: () =>
+                          _showMessageOptions(context, message, isSentByMe),
+                      onReact: (emoji) => _handleEmojiReaction(emoji, message),
+                    );
                   },
                 );
               },
@@ -328,99 +352,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  Widget _buildMessageBubble(MessageModel message, bool isSentByMe) {
-    if (!isSentByMe && message.isUnread && message.id != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(messageProvider.notifier).markAsRead(message.id!);
-      });
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        mainAxisAlignment: isSentByMe
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!isSentByMe) ...[
-            CircleAvatar(
-              backgroundImage: NetworkImage(widget.otherUserAvatar),
-              radius: 16,
-            ),
-            const SizedBox(width: 8),
-          ],
-          Flexible(
-            child: Column(
-              crossAxisAlignment: isSentByMe
-                  ? CrossAxisAlignment.end
-                  : CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _getMessageColor(message, isSentByMe),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: InkWell(
-                    onLongPress: () {
-                      _showMessageOptions(context, message, isSentByMe);
-                    },
-                    child: Text(
-                      message.content ?? '',
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (isSentByMe) ...[
-                      _buildMessageStatusIndicator(message),
-                      const SizedBox(width: 8),
-                    ],
-                    if (!isSentByMe && message.isUnread) ...[
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF0D7FF2),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      const Text(
-                        'Unread',
-                        style: TextStyle(
-                          color: Color(0xFF0D7FF2),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    if (message.createdAt != null)
-                      Text(
-                        _formatMessageTime(message.createdAt!),
-                        style: TextStyle(
-                          color: Colors.grey.shade400,
-                          fontSize: 11,
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showMessageOptions(
     BuildContext context,
     MessageModel message,
@@ -433,14 +364,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       isScrollControlled: true,
       builder: (context) => Consumer(
         builder: (context, ref, _) {
-          // ✅ Fetch emojis from Supabase table
           final emojisAsync = ref.watch(emojisProvider);
 
           return Column(
             mainAxisAlignment: MainAxisAlignment.end,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Quick reaction pill
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 padding: const EdgeInsets.symmetric(
@@ -454,7 +383,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // ✅ Emojis from table (category: reaction)
                     Expanded(
                       child: emojisAsync.when(
                         loading: () => const Center(
@@ -468,7 +396,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           ),
                         ),
                         error: (_, __) => Row(
-                          // fallback to hardcoded if fetch fails
                           children: ['❤️', '😆', '😮', '😢', '😡', '👍']
                               .map(
                                 (e) => GestureDetector(
@@ -491,7 +418,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         ),
                         data: (emojis) => Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          // ✅ Only show 'reaction' category in quick bar
                           children: emojis
                               .where((e) => e.category == 'reaction')
                               .map(
@@ -522,8 +448,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         ),
                       ),
                     ),
-
-                    // + button opens full EmojiPicker
                     GestureDetector(
                       onTap: () {
                         Navigator.pop(context);
@@ -546,8 +470,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ],
                 ),
               ),
-
-              // Message bubble preview
               Align(
                 alignment: isSentByMe
                     ? Alignment.centerRight
@@ -559,7 +481,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: isSentByMe ? Colors.blue : Color(0xFF2C2C2E),
+                    color: isSentByMe ? Colors.blue : const Color(0xFF2C2C2E),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -568,8 +490,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ),
                 ),
               ),
-
-              // Action buttons panel
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
@@ -613,7 +533,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ],
                 ),
               ),
-
               Container(height: MediaQuery.of(context).padding.bottom + 16),
             ],
           );
@@ -622,19 +541,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  // ✅ Handle emoji reaction — insert into message_reactions table
-  void _handleEmojiReaction(String emoji, MessageModel message) {
-    try {
-      talker.info('Reacting to message ${message.id} with emoji: $emoji');
-      // TODO: call your reaction provider here
-      // ref.read(reactionNotifierProvider(message.id!).notifier)
-      //    .reactWithEmoji(emoji);
-    } catch (e, st) {
-      talker.error('Error reacting to message', e, st);
-    }
-  }
-
-  // Full EmojiPicker bottom sheet
   void _showFullEmojiPicker(BuildContext context, MessageModel message) {
     showModalBottomSheet(
       context: context,
@@ -710,103 +616,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  Color _getMessageColor(MessageModel message, bool isSentByMe) {
-    if (!isSentByMe) return const Color(0xFF2C2C2E);
-
-    switch (message.status) {
-      case MessageStatus.sending:
-        return Colors.blue.shade300;
-      case MessageStatus.sent:
-        return Colors.blue.shade600;
-      case MessageStatus.delivered:
-        return Colors.blue.shade700;
-      case MessageStatus.read:
-        return Colors.blue.shade800;
-      case MessageStatus.failed:
-        return Colors.red.shade400;
-    }
-  }
-
-  Widget _buildMessageStatusIndicator(MessageModel message) {
-    switch (message.status) {
-      case MessageStatus.sending:
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 12,
-              height: 12,
-              child: CircularProgressIndicator(
-                strokeWidth: 1.5,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white70),
-              ),
-            ),
-            const SizedBox(width: 4),
-            const Text(
-              'Sending...',
-              style: TextStyle(color: Colors.white70, fontSize: 11),
-            ),
-          ],
-        );
-      case MessageStatus.sent:
-        return const Icon(Icons.done, size: 16, color: Colors.white70);
-      case MessageStatus.delivered:
-        return const Icon(Icons.done_all, size: 16, color: Colors.white70);
-      case MessageStatus.read:
-        return const Icon(Icons.done_all, size: 16, color: Color(0xFF0D7FF2));
-      case MessageStatus.failed:
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 16, color: Colors.red.shade200),
-            const SizedBox(width: 4),
-            Text(
-              'Failed',
-              style: TextStyle(color: Colors.red.shade200, fontSize: 11),
-            ),
-            const SizedBox(width: 4),
-            GestureDetector(
-              onTap: () {
-                if (message.id != null) {
-                  ref
-                      .read(messageProvider.notifier)
-                      .sendMessage(
-                        conversationId: widget.conversationId,
-                        senderId: widget.senderId,
-                        receiverId: widget.receiverId,
-                        content: message.content ?? '',
-                      );
-                }
-              },
-              child: Text(
-                'Retry',
-                style: TextStyle(
-                  color: Colors.blue.shade200,
-                  fontSize: 11,
-                  decoration: TextDecoration.underline,
-                ),
-              ),
-            ),
-          ],
-        );
-    }
-  }
-
-  String _formatMessageTime(DateTime messageTime) {
-    final now = DateTime.now();
-    final difference = now.difference(messageTime);
-
-    if (difference.inMinutes < 1) {
-      return 'now';
-    } else if (difference.inHours < 1) {
-      return '${difference.inMinutes}m ago';
-    } else if (difference.inDays < 1) {
-      return '${difference.inHours}h ago';
-    } else {
-      return '${messageTime.day}/${messageTime.month}';
-    }
-  }
-
   Widget _buildMessageInput() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -851,25 +660,347 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   int _getUnreadCount(List<MessageModel> messages) {
     return messages
-        .where(
-          (message) => message.senderId != widget.senderId && message.isUnread,
-        )
+        .where((m) => m.senderId != widget.senderId && m.isUnread)
         .length;
   }
 
   Future<void> _markAllAsRead(List<MessageModel> messages) async {
     try {
       talker.info('Marking all messages as read');
-      final messageNotifier = ref.read(messageProvider.notifier);
+      final notifier = ref.read(messageProvider.notifier);
       for (final message in messages) {
         if (message.senderId != widget.senderId &&
             message.isUnread &&
             message.id != null) {
-          await messageNotifier.markAsRead(message.id!);
+          await notifier.markAsRead(message.id!);
         }
       }
     } catch (e, st) {
       talker.error('Error marking messages as read', e, st);
     }
+  }
+}
+
+// ============================================
+// MESSAGE BUBBLE
+// ============================================
+class MessageBubble extends ConsumerWidget {
+  final MessageModel message;
+  final bool isSentByMe;
+  final String senderId;
+  final String otherUserAvatar;
+  final int conversationId;
+  final String receiverId;
+  final VoidCallback onLongPress;
+  final void Function(String emoji) onReact;
+
+  const MessageBubble({
+    super.key,
+    required this.message,
+    required this.isSentByMe,
+    required this.senderId,
+    required this.otherUserAvatar,
+    required this.conversationId,
+    required this.receiverId,
+    required this.onLongPress,
+    required this.onReact,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!isSentByMe && message.isUnread && message.id != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(messageProvider.notifier).markAsRead(message.id!);
+      });
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Row(
+        mainAxisAlignment: isSentByMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isSentByMe) ...[
+            CircleAvatar(
+              backgroundImage: NetworkImage(otherUserAvatar),
+              radius: 16,
+            ),
+            const SizedBox(width: 8),
+          ],
+          Flexible(
+            child: Column(
+              crossAxisAlignment: isSentByMe
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
+              children: [
+                // ✅ Stack for bubble + emoji badge overlap
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    // Bubble
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _getMessageColor(message, isSentByMe),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: InkWell(
+                        onLongPress: onLongPress,
+                        child: Text(
+                          message.content ?? '',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // ✅ Emoji stack badge — overlaps bottom corner
+                    if (message.id != null)
+                      Positioned(
+                        bottom: -14,
+                        right: isSentByMe ? 8 : null,
+                        left: isSentByMe ? null : 8,
+                        child: _EmojiStackBadge(
+                          messageId: message.id!,
+                          senderId: senderId,
+                        ),
+                      ),
+                  ],
+                ),
+
+                // Space for badge overlap
+                const SizedBox(height: 18),
+
+                // Time + status row
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isSentByMe) ...[
+                      _buildStatusIndicator(message, ref),
+                      const SizedBox(width: 8),
+                    ],
+                    if (!isSentByMe && message.isUnread) ...[
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF0D7FF2),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Text(
+                        'Unread',
+                        style: TextStyle(
+                          color: Color(0xFF0D7FF2),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    if (message.createdAt != null)
+                      Text(
+                        _formatTime(message.createdAt!),
+                        style: TextStyle(
+                          color: Colors.grey.shade400,
+                          fontSize: 11,
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getMessageColor(MessageModel message, bool isSentByMe) {
+    if (!isSentByMe) return const Color(0xFF2C2C2E);
+    switch (message.status) {
+      case MessageStatus.sending:
+        return Colors.blue.shade300;
+      case MessageStatus.sent:
+        return Colors.blue.shade600;
+      case MessageStatus.delivered:
+        return Colors.blue.shade700;
+      case MessageStatus.read:
+        return Colors.blue.shade800;
+      case MessageStatus.failed:
+        return Colors.red.shade400;
+    }
+  }
+
+  Widget _buildStatusIndicator(MessageModel message, WidgetRef ref) {
+    switch (message.status) {
+      case MessageStatus.sending:
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.5,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white70),
+              ),
+            ),
+            SizedBox(width: 4),
+            Text(
+              'Sending...',
+              style: TextStyle(color: Colors.white70, fontSize: 11),
+            ),
+          ],
+        );
+      case MessageStatus.sent:
+        return const Icon(Icons.done, size: 16, color: Colors.white70);
+      case MessageStatus.delivered:
+        return const Icon(Icons.done_all, size: 16, color: Colors.white70);
+      case MessageStatus.read:
+        return const Icon(Icons.done_all, size: 16, color: Color(0xFF0D7FF2));
+      case MessageStatus.failed:
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 16, color: Colors.red.shade200),
+            const SizedBox(width: 4),
+            Text(
+              'Failed',
+              style: TextStyle(color: Colors.red.shade200, fontSize: 11),
+            ),
+            const SizedBox(width: 4),
+            GestureDetector(
+              onTap: () {
+                if (message.id != null) {
+                  ref
+                      .read(messageProvider.notifier)
+                      .sendMessage(
+                        conversationId: conversationId,
+                        senderId: senderId,
+                        receiverId: receiverId,
+                        content: message.content ?? '',
+                      );
+                }
+              },
+              child: Text(
+                'Retry',
+                style: TextStyle(
+                  color: Colors.blue.shade200,
+                  fontSize: 11,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+          ],
+        );
+    }
+  }
+
+  String _formatTime(DateTime messageTime) {
+    final now = DateTime.now();
+    final difference = now.difference(messageTime);
+    if (difference.inMinutes < 1) return 'now';
+    if (difference.inHours < 1) return '${difference.inMinutes}m ago';
+    if (difference.inDays < 1) return '${difference.inHours}h ago';
+    return '${messageTime.day}/${messageTime.month}';
+  }
+}
+
+// ============================================
+// EMOJI STACK BADGE
+// Overlaps the bottom corner of the bubble
+// ============================================
+class _EmojiStackBadge extends ConsumerWidget {
+  final int messageId;
+  final String senderId;
+
+  const _EmojiStackBadge({required this.messageId, required this.senderId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final reactionsAsync = ref.watch(messageReactionsProvider(messageId));
+
+    return reactionsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (reactions) {
+        if (reactions.isEmpty) return const SizedBox.shrink();
+
+        // Unique emojis max 3
+        final uniqueEmojis = reactions
+            .map((r) => r.emoji)
+            .toSet()
+            .take(3)
+            .toList();
+        final totalCount = reactions.length;
+        final iReacted = reactions.any((r) => r.userId == senderId);
+        final myEmoji = reactions
+            .where((r) => r.userId == senderId)
+            .firstOrNull
+            ?.emoji;
+
+        return GestureDetector(
+          onTap: () {
+            if (myEmoji != null) {
+              // Tap badge → remove my reaction
+              ref
+                  .read(messageReactionProvider.notifier)
+                  .toggleEmojiReaction(
+                    messageId: messageId,
+                    emoji: myEmoji,
+                    currentUserId: senderId,
+                  );
+            }
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            decoration: BoxDecoration(
+              color: iReacted
+                  ? const Color(0xFF1A237E)
+                  : const Color(0xFF2C2C2E),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: iReacted
+                    ? const Color(0xFF0D7FF2)
+                    : const Color(0xFF1a1a1a),
+                width: 2,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Stacked emojis
+                ...uniqueEmojis.map(
+                  (emoji) => Text(emoji, style: const TextStyle(fontSize: 13)),
+                ),
+
+                // Count if more than 1
+                if (totalCount > 1) ...[
+                  const SizedBox(width: 3),
+                  Text(
+                    '$totalCount',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: iReacted ? const Color(0xFF90CAF9) : Colors.grey,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }
