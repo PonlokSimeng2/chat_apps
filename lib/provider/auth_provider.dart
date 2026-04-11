@@ -149,15 +149,23 @@ class Auth extends _$Auth {
     final userId = supabase.auth.currentUser?.id;
     if (userId != null) {
       try {
-        await supabase.from('users').update({
-          'is_online': false,
-          'last_seen_at': DateTime.now().toIso8601String(),
-          'updated_at': DateTime.now().toIso8601String(),
-        }).eq('id', userId);
+        await supabase
+            .from('users')
+            .update({
+              'is_online': false,
+              'onesignal_subscription_id': null, // ✅ clear subscription ID
+              'last_seen_at': DateTime.now().toIso8601String(),
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', userId);
       } catch (e, st) {
-        talker.warning('Failed to update online status on sign out', e, st);
+        talker.warning('Failed to update on sign out', e, st);
       }
     }
+
+    // ✅ Reset trackers so next user gets fresh sync
+    _lastOneSignalUserId = null;
+    _oneSignalObserverRegistered = false;
 
     await supabase.auth.signOut();
     OneSignal.logout();
@@ -266,8 +274,9 @@ class Auth extends _$Auth {
       talker.warning('OneSignal login failed', e, st);
     }
 
-    final permissionGranted =
-        await OneSignal.Notifications.requestPermission(true);
+    final permissionGranted = await OneSignal.Notifications.requestPermission(
+      true,
+    );
     if (!permissionGranted) {
       talker.warning('Notifications permission not granted');
     }

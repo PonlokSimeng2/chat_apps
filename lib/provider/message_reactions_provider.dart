@@ -11,13 +11,10 @@ part 'message_reactions_provider.g.dart';
 Stream<List<MessageReactionModel>> messageReactions(Ref ref, int messageId) {
   final supabase = ref.watch(supabaseProvider).client;
   final controller = StreamController<List<MessageReactionModel>>();
-
   List<MessageReactionModel> currentList = [];
 
   void emit() {
-    if (!controller.isClosed) {
-      controller.add([...currentList]);
-    }
+    if (!controller.isClosed) controller.add([...currentList]);
   }
 
   final channel = supabase.channel('message_reactions_$messageId')
@@ -37,12 +34,9 @@ Stream<List<MessageReactionModel>> messageReactions(Ref ref, int messageId) {
             ...currentList.where((r) => r.userId != newReaction.userId),
             newReaction,
           ];
-          log(
-            'INSERT reaction: ${newReaction.emoji} | list size: ${currentList.length}',
-          );
           emit();
         } catch (e) {
-          log('Error handling INSERT: $e');
+          log('Error handling INSERT reaction: $e');
         }
       },
     )
@@ -57,26 +51,17 @@ Stream<List<MessageReactionModel>> messageReactions(Ref ref, int messageId) {
       ),
       callback: (payload) {
         try {
-          // ✅ Log full oldRecord to debug what Supabase sends
-          log('DELETE payload.oldRecord: ${payload.oldRecord}');
-          log(
-            'currentList before delete: ${currentList.map((r) => '${r.id}/${r.userId}/${r.emoji}').toList()}',
-          );
-
           final deletedId = payload.oldRecord['id'] as String?;
           final deletedUserId = payload.oldRecord['user_id'] as String?;
 
           if (deletedId != null && deletedId.isNotEmpty) {
             currentList = currentList.where((r) => r.id != deletedId).toList();
-            log('Removed by id: $deletedId');
           } else if (deletedUserId != null && deletedUserId.isNotEmpty) {
             currentList = currentList
                 .where((r) => r.userId != deletedUserId)
                 .toList();
-            log('Removed by userId: $deletedUserId');
           } else {
-            // ✅ Last resort — re-fetch from DB since oldRecord is empty
-            log('oldRecord is empty — re-fetching from DB');
+            // Fallback re-fetch
             Future.microtask(() async {
               try {
                 final data = await supabase
@@ -86,19 +71,16 @@ Stream<List<MessageReactionModel>> messageReactions(Ref ref, int messageId) {
                 currentList = (data as List)
                     .map((e) => MessageReactionModel.fromJson(e))
                     .toList();
-                log('Re-fetched ${currentList.length} reactions');
                 emit();
               } catch (e) {
                 log('Error re-fetching reactions: $e');
               }
             });
-            return; // emit will be called inside microtask
+            return;
           }
-
-          log('currentList after delete: ${currentList.length}');
           emit();
         } catch (e) {
-          log('Error handling DELETE: $e');
+          log('Error handling DELETE reaction: $e');
         }
       },
     )
@@ -117,10 +99,9 @@ Stream<List<MessageReactionModel>> messageReactions(Ref ref, int messageId) {
           currentList = currentList
               .map((r) => r.id == updated.id ? updated : r)
               .toList();
-          log('UPDATE reaction: ${updated.emoji}');
           emit();
         } catch (e) {
-          log('Error handling UPDATE: $e');
+          log('Error handling UPDATE reaction: $e');
         }
       },
     )
@@ -136,10 +117,6 @@ Stream<List<MessageReactionModel>> messageReactions(Ref ref, int messageId) {
       currentList = (data as List)
           .map((e) => MessageReactionModel.fromJson(e))
           .toList();
-
-      log(
-        'Initial fetch: ${currentList.length} reactions for message $messageId',
-      );
       emit();
     } catch (e) {
       log('Error fetching initial reactions: $e');
@@ -150,15 +127,10 @@ Stream<List<MessageReactionModel>> messageReactions(Ref ref, int messageId) {
   ref.onDispose(() {
     supabase.removeChannel(channel);
     controller.close();
-    log('Disposed reactions channel for message $messageId');
   });
 
   return controller.stream;
 }
-
-// ============================================
-// REACTION ACTIONS
-// ============================================
 
 @riverpod
 class MessageReactionNotifier extends _$MessageReactionNotifier {
@@ -189,7 +161,6 @@ class MessageReactionNotifier extends _$MessageReactionNotifier {
           );
 
       if (!ref.mounted) return;
-      log('Reacted with emoji $emoji on message $messageId');
       state = const AsyncData(null);
     } catch (e, st) {
       if (!ref.mounted) return;
@@ -205,15 +176,13 @@ class MessageReactionNotifier extends _$MessageReactionNotifier {
       final supabase = ref.read(supabaseProvider);
       final userId = supabase.client.auth.currentUser!.id;
 
-      final result = await supabase.client
+      await supabase.client
           .from(_table)
           .delete()
           .eq('message_id', messageId)
-          .eq('user_id', userId)
-          .select(); // ✅ .select() confirms the row was actually deleted
+          .eq('user_id', userId);
 
       if (!ref.mounted) return;
-      log('Deleted rows: $result');
       state = const AsyncData(null);
     } catch (e, st) {
       if (!ref.mounted) return;
@@ -236,15 +205,9 @@ class MessageReactionNotifier extends _$MessageReactionNotifier {
           .where((r) => r.userId == currentUserId)
           .firstOrNull;
 
-      log(
-        'Toggle: myReaction=${myReaction?.emoji}, tapped=$emoji, currentUserId=$currentUserId',
-      );
-
       if (myReaction != null && myReaction.emoji == emoji) {
-        log('Same emoji → removing');
         await removeReaction(messageId);
       } else {
-        log('New emoji → adding');
         await reactWithEmoji(messageId: messageId, emoji: emoji);
       }
     } catch (e, st) {

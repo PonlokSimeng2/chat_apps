@@ -66,7 +66,7 @@ final class MessageReactionsProvider
   }
 }
 
-String _$messageReactionsHash() => r'ed16cef72dcdb1215535c9a49c5c25ca94cedae8';
+String _$messageReactionsHash() => r'146c0d4d3ca65657a08e3cc115c6c2291cc5a0dd';
 
 final class MessageReactionsFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<MessageReactionModel>>, int> {
@@ -119,7 +119,7 @@ final class MessageReactionNotifierProvider
 }
 
 String _$messageReactionNotifierHash() =>
-    r'7505412a9b3a3488fbfd493203e977c2cf60fe72';
+    r'2683e0c55b873435c67c47cd96e3fd021c57719c';
 
 abstract class _$MessageReactionNotifier extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();

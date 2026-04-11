@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../model/message_model.dart';
@@ -464,6 +465,88 @@ class MessageNotifier extends _$MessageNotifier {
   // Disconnect Realtime
   void disconnect() {
     _disconnectRealtime();
+  }
+
+  Future<void> sendImageMessage({
+    required int conversationId,
+    required String senderId,
+    required String receiverId,
+    required File imageFile,
+  }) async {
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
+    final session = supabase.auth.currentSession;
+    print('sendImageMessage: senderId=$senderId receiverId=$receiverId');
+    // Very visible debug
+    print('=== IMAGE UPLOAD DEBUG ===');
+    print('User ID: ${user?.id}');
+    print('Session null: ${session == null}');
+    print('Access token: ${session?.accessToken?.substring(0, 20)}...');
+    print('==========================');
+
+    final tempMsg = MessageModel.createTemp(
+      conversationId: conversationId,
+      senderId: senderId,
+      receiverId: receiverId,
+      content: '📷 Sending image...',
+      messageType: 'image',
+    );
+    state = AsyncData([...state.value ?? [], tempMsg]);
+
+    try {
+      // 2. Upload to Supabase Storage
+      final fileName =
+          'chat_images/${conversationId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      await supabase.storage
+          .from('chat-media')
+          .upload(
+            fileName,
+            imageFile,
+            fileOptions: const FileOptions(contentType: 'image/jpeg'),
+          );
+
+      // 3. Get public URL
+      final publicUrl = supabase.storage
+          .from('chat-media')
+          .getPublicUrl(fileName);
+
+      // 4. Insert message row
+      final response = await supabase
+          .from('messages')
+          .insert({
+            'conversation_id': conversationId,
+            'sender_id': senderId,
+            'receiver_id': receiverId,
+            'message_type': 'image',
+            'file_url': publicUrl,
+            'file_name': fileName,
+            'file_size': await imageFile.length(),
+            'content': null,
+          })
+          .select()
+          .single();
+
+      final confirmed = MessageModel.fromJson(response);
+
+      // 5. Replace temp with confirmed
+      state = AsyncData(
+        (state.value ?? [])
+            .map((m) => m.tempId == tempMsg.tempId ? confirmed : m)
+            .toList(),
+      );
+    } catch (e) {
+      // Mark as failed
+      state = AsyncData(
+        (state.value ?? [])
+            .map(
+              (m) => m.tempId == tempMsg.tempId
+                  ? m.copyWith(status: MessageStatus.failed)
+                  : m,
+            )
+            .toList(),
+      );
+      rethrow;
+    }
   }
 }
 
