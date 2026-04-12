@@ -9,6 +9,16 @@ import '../main.dart';
 
 part 'message_provider.g.dart';
 
+// Helper function to create a unique conversation key
+String _getConversationKey(
+  String currentUserId,
+  String senderId,
+  String receiverId,
+) {
+  final users = [senderId, receiverId]..sort();
+  return '${users[0]}_${users[1]}';
+}
+
 @Riverpod(keepAlive: true)
 class MessageNotifier extends _$MessageNotifier {
   final SupabaseClient _client = Supabase.instance.client;
@@ -24,7 +34,6 @@ class MessageNotifier extends _$MessageNotifier {
 
   void _setupRealtimeSubscription(int conversationId, String receiverId) {
     try {
-      // Remove existing subscription
       _disconnectRealtime();
 
       final currentUser = _client.auth.currentUser;
@@ -37,10 +46,8 @@ class MessageNotifier extends _$MessageNotifier {
         'Setting up Realtime subscription for conversation $conversationId',
       );
 
-      // Create a channel for this conversation
       _channel = _client.channel('messages:conversation:$conversationId');
 
-      // Subscribe to INSERT events
       _channel!
           .onPostgresChanges(
             event: PostgresChangeEvent.insert,
@@ -52,11 +59,10 @@ class MessageNotifier extends _$MessageNotifier {
               value: conversationId,
             ),
             callback: (payload) {
-              print('Realtime: 📨 New message received');
+              talker.info('Realtime: New message received');
               _handleInsert(payload);
             },
           )
-          // Subscribe to UPDATE events
           .onPostgresChanges(
             event: PostgresChangeEvent.update,
             schema: 'public',
@@ -67,11 +73,10 @@ class MessageNotifier extends _$MessageNotifier {
               value: conversationId,
             ),
             callback: (payload) {
-              print('Realtime: 🔄 Message updated');
+              talker.info('Realtime: Message updated');
               _handleUpdate(payload);
             },
           )
-          // Subscribe to DELETE events
           .onPostgresChanges(
             event: PostgresChangeEvent.delete,
             schema: 'public',
@@ -82,7 +87,7 @@ class MessageNotifier extends _$MessageNotifier {
               value: conversationId,
             ),
             callback: (payload) {
-              print('Realtime: 🗑️ Message deleted');
+              talker.info('Realtime: Message deleted');
               _handleDelete(payload);
             },
           )
@@ -93,7 +98,6 @@ class MessageNotifier extends _$MessageNotifier {
               );
             } else if (status == RealtimeSubscribeStatus.timedOut) {
               talker.warning('Realtime subscription timed out, retrying...');
-              // Retry subscription
               Future.delayed(const Duration(seconds: 2), () {
                 _setupRealtimeSubscription(conversationId, receiverId);
               });
@@ -110,10 +114,8 @@ class MessageNotifier extends _$MessageNotifier {
     try {
       final newData = payload.newRecord;
       if (newData.isEmpty) return;
-
       final newMessage = MessageModel.fromJson(newData);
       talker.info('New message received from ${newMessage.senderId}');
-
       addMessage(newMessage);
     } catch (e, st) {
       talker.error('Error handling realtime insert', e, st);
@@ -124,10 +126,8 @@ class MessageNotifier extends _$MessageNotifier {
     try {
       final newData = payload.newRecord;
       if (newData.isEmpty) return;
-
       final updatedMessage = MessageModel.fromJson(newData);
       talker.info('Updating message ${updatedMessage.id}');
-
       updateMessage(updatedMessage);
     } catch (e, st) {
       talker.error('Error handling realtime update', e, st);
@@ -138,7 +138,6 @@ class MessageNotifier extends _$MessageNotifier {
     try {
       final oldData = payload.oldRecord;
       if (oldData.isEmpty) return;
-
       final messageId = oldData['id'] as int?;
       if (messageId != null) {
         talker.info('Deleting message $messageId');
@@ -183,7 +182,6 @@ class MessageNotifier extends _$MessageNotifier {
       );
       state = AsyncValue.data(messages);
 
-      // Setup Realtime subscription
       _setupRealtimeSubscription(conversationId, receiverId);
     } catch (e, stack) {
       talker.error(
@@ -195,11 +193,9 @@ class MessageNotifier extends _$MessageNotifier {
     }
   }
 
-  // Public method to add message (for Realtime integration)
   void addMessage(MessageModel message) {
     final currentData = state.value ?? [];
 
-    // Check if message already exists to avoid duplicates
     final existingMessageIndex = currentData.indexWhere(
       (msg) =>
           (msg.id != null && msg.id == message.id) ||
@@ -207,17 +203,14 @@ class MessageNotifier extends _$MessageNotifier {
     );
 
     if (existingMessageIndex != -1) {
-      // Update existing message (useful for updating status of temp messages)
       final updatedList = [...currentData];
       updatedList[existingMessageIndex] = message;
       state = AsyncValue.data(updatedList);
     } else {
-      // Add new message
       state = AsyncValue.data([...currentData, message]);
     }
   }
 
-  // Public method to update message (for Realtime integration)
   void updateMessage(MessageModel message) {
     final currentData = state.value ?? [];
     final updatedList = currentData.map((msg) {
@@ -226,7 +219,6 @@ class MessageNotifier extends _$MessageNotifier {
     state = AsyncValue.data(updatedList);
   }
 
-  // Public method to delete message (for Realtime integration)
   void deleteMessage(int messageId) {
     final currentData = state.value ?? [];
     final filteredList = currentData
@@ -246,7 +238,6 @@ class MessageNotifier extends _$MessageNotifier {
     int? fileSize,
     int? replyToMessageId,
   }) async {
-    // 1. Create temporary message for optimistic UI update
     final tempMessage = MessageModel.createTemp(
       conversationId: conversationId,
       senderId: senderId,
@@ -255,11 +246,9 @@ class MessageNotifier extends _$MessageNotifier {
       messageType: messageType,
     );
 
-    // 2. Add temporary message to UI immediately
     addMessage(tempMessage);
 
     try {
-      // 3. Send message to server
       final newMessageData = {
         'conversation_id': conversationId,
         'sender_id': senderId,
@@ -276,7 +265,6 @@ class MessageNotifier extends _$MessageNotifier {
         'updated_at': DateTime.now().toIso8601String(),
       };
 
-      // Remove null values
       newMessageData.removeWhere((key, value) => value == null);
 
       final response = await _client
@@ -285,21 +273,15 @@ class MessageNotifier extends _$MessageNotifier {
           .select()
           .single();
 
-      // 4. Create permanent message from server response
-      final permanentMessage = MessageModel.fromJson(response).copyWith(
-        tempId: tempMessage.tempId, // Keep tempId for replacement
-        status: MessageStatus.sent,
-      );
+      final permanentMessage = MessageModel.fromJson(
+        response,
+      ).copyWith(tempId: tempMessage.tempId, status: MessageStatus.sent);
 
-      // 5. Replace temporary message with permanent one
-      // Note: Realtime will also trigger an insert event, but we handle duplicates in addMessage
       addMessage(permanentMessage);
     } catch (e) {
-      // 6. Handle send failure - update message status to failed
       final failedMessage = tempMessage.copyWith(status: MessageStatus.failed);
       addMessage(failedMessage);
 
-      // Optionally remove failed message after a delay
       Future.delayed(const Duration(seconds: 5), () {
         final currentData = state.value ?? [];
         final updatedList = currentData
@@ -329,10 +311,7 @@ class MessageNotifier extends _$MessageNotifier {
           .single();
 
       final updatedMessage = MessageModel.fromJson(response);
-
-      // Update local state immediately (Realtime will also trigger)
       updateMessage(updatedMessage);
-
       return updatedMessage;
     } catch (e) {
       throw Exception('Failed to edit message: $e');
@@ -349,7 +328,6 @@ class MessageNotifier extends _$MessageNotifier {
           })
           .eq('id', messageId);
 
-      // Update local state immediately (Realtime will also trigger)
       deleteMessage(messageId);
     } catch (e) {
       throw Exception('Failed to delete message: $e');
@@ -366,7 +344,7 @@ class MessageNotifier extends _$MessageNotifier {
           })
           .eq('id', messageId);
     } catch (e) {
-      print('Failed to mark message as read: $e');
+      talker.warning('Failed to mark message as read: $e');
     }
   }
 
@@ -385,7 +363,7 @@ class MessageNotifier extends _$MessageNotifier {
           .neq('sender_id', userId)
           .filter('read_at', 'is', null);
     } catch (e) {
-      print('Failed to mark all messages as read: $e');
+      talker.warning('Failed to mark all messages as read: $e');
     }
   }
 
@@ -456,13 +434,11 @@ class MessageNotifier extends _$MessageNotifier {
     }
   }
 
-  // Clear all messages (useful when logging out)
   void clearMessages() {
     _disconnectRealtime();
     state = const AsyncValue.data([]);
   }
 
-  // Disconnect Realtime
   void disconnect() {
     _disconnectRealtime();
   }
@@ -474,15 +450,6 @@ class MessageNotifier extends _$MessageNotifier {
     required File imageFile,
   }) async {
     final supabase = Supabase.instance.client;
-    final user = supabase.auth.currentUser;
-    final session = supabase.auth.currentSession;
-    print('sendImageMessage: senderId=$senderId receiverId=$receiverId');
-    // Very visible debug
-    print('=== IMAGE UPLOAD DEBUG ===');
-    print('User ID: ${user?.id}');
-    print('Session null: ${session == null}');
-    print('Access token: ${session?.accessToken?.substring(0, 20)}...');
-    print('==========================');
 
     final tempMsg = MessageModel.createTemp(
       conversationId: conversationId,
@@ -494,7 +461,6 @@ class MessageNotifier extends _$MessageNotifier {
     state = AsyncData([...state.value ?? [], tempMsg]);
 
     try {
-      // 2. Upload to Supabase Storage
       final fileName =
           'chat_images/${conversationId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
       await supabase.storage
@@ -505,12 +471,10 @@ class MessageNotifier extends _$MessageNotifier {
             fileOptions: const FileOptions(contentType: 'image/jpeg'),
           );
 
-      // 3. Get public URL
       final publicUrl = supabase.storage
           .from('chat-media')
           .getPublicUrl(fileName);
 
-      // 4. Insert message row
       final response = await supabase
           .from('messages')
           .insert({
@@ -528,14 +492,12 @@ class MessageNotifier extends _$MessageNotifier {
 
       final confirmed = MessageModel.fromJson(response);
 
-      // 5. Replace temp with confirmed
       state = AsyncData(
         (state.value ?? [])
             .map((m) => m.tempId == tempMsg.tempId ? confirmed : m)
             .toList(),
       );
     } catch (e) {
-      // Mark as failed
       state = AsyncData(
         (state.value ?? [])
             .map(
@@ -550,7 +512,6 @@ class MessageNotifier extends _$MessageNotifier {
   }
 }
 
-// Convenience providers
 @riverpod
 class MessagePagination extends _$MessagePagination {
   final int _limit = 50;
@@ -566,7 +527,6 @@ class MessagePagination extends _$MessagePagination {
   Future<void> loadMoreMessages(int conversationId) async {
     if (!_hasMore) return;
 
-    // If conversation changed, reset pagination
     if (_currentConversationId != conversationId) {
       _offset = 0;
       _hasMore = true;
@@ -589,7 +549,6 @@ class MessagePagination extends _$MessagePagination {
           .map((json) => MessageModel.fromJson(json))
           .toList();
 
-      // Reverse to maintain chronological order
       final chronologicalMessages = newMessages.reversed.toList();
 
       if (newMessages.length < _limit) {
@@ -614,40 +573,63 @@ class MessagePagination extends _$MessagePagination {
   bool get hasMore => _hasMore;
 }
 
-// Chat List StreamProviders
+// ─────────────────────────────────────────────
+// Chat List Providers
+// ─────────────────────────────────────────────
+
 Future<List<UserModel>> _fetchConversationUsers(
   SupabaseClient supabase,
   String currentUserId,
 ) async {
-  // Get unique users that current user has sent messages to or received messages from
+  // Get all messages involving the current user
   final response = await supabase
       .from('messages')
-      .select('sender_id, receiver_id')
+      .select('sender_id, receiver_id, created_at')
       .or('sender_id.eq.$currentUserId,receiver_id.eq.$currentUserId')
-      .neq('is_deleted', true);
+      .neq('is_deleted', true)
+      .order('created_at', ascending: false);
 
-  final Set<String> conversationUserIds = {};
+  // Track latest message time per other user
+  final Map<String, DateTime> latestMessageTime = {};
+
   for (final message in response as List) {
     final senderId = message['sender_id'] as String?;
     final receiverId = message['receiver_id'] as String?;
+    final createdAt = message['created_at'] != null
+        ? DateTime.tryParse(message['created_at'].toString())
+        : null;
 
-    if (senderId != null && senderId != currentUserId) {
-      conversationUserIds.add(senderId);
-    }
-    if (receiverId != null && receiverId != currentUserId) {
-      conversationUserIds.add(receiverId);
+    final otherId = senderId == currentUserId ? receiverId : senderId;
+
+    if (otherId != null && otherId != currentUserId) {
+      if (!latestMessageTime.containsKey(otherId) ||
+          (createdAt != null &&
+              createdAt.isAfter(latestMessageTime[otherId]!))) {
+        latestMessageTime[otherId] = createdAt ?? DateTime(0);
+      }
     }
   }
 
-  if (conversationUserIds.isEmpty) return [];
+  if (latestMessageTime.isEmpty) return [];
 
-  // Get user details for these conversation users
+  // Fetch user details
   final usersResponse = await supabase
       .from('users')
       .select()
-      .inFilter('id', conversationUserIds.toList());
+      .inFilter('id', latestMessageTime.keys.toList());
 
-  return usersResponse.map((json) => UserModel.fromJson(json)).toList();
+  final users = (usersResponse as List)
+      .map((json) => UserModel.fromJson(json))
+      .toList();
+
+  // Sort by latest message time descending
+  users.sort((a, b) {
+    final timeA = latestMessageTime[a.id] ?? DateTime(0);
+    final timeB = latestMessageTime[b.id] ?? DateTime(0);
+    return timeB.compareTo(timeA);
+  });
+
+  return users;
 }
 
 @riverpod
@@ -717,13 +699,10 @@ Stream<Map<String, MessageModel>> getLastMessages(Ref ref) async* {
     return;
   }
 
-  // Create a stream controller to handle real-time updates
   final streamController = StreamController<Map<String, MessageModel>>();
 
-  // Initial fetch
   yield await _fetchLastMessages(supabase, currentUserId);
 
-  // Listen to real-time changes
   final channel = supabase
       .channel('last_messages_$currentUserId')
       .onPostgresChanges(
@@ -732,21 +711,21 @@ Stream<Map<String, MessageModel>> getLastMessages(Ref ref) async* {
         table: 'messages',
         callback: (payload) async {
           final newMessages = await _fetchLastMessages(supabase, currentUserId);
-          streamController.add(newMessages);
+          if (!streamController.isClosed) {
+            streamController.add(newMessages);
+          }
         },
       )
       .subscribe();
 
-  // Listen to the stream controller for updates
-  await for (final messages in streamController.stream) {
-    yield messages;
-  }
-
-  // Cleanup
   ref.onDispose(() {
     supabase.removeChannel(channel);
     streamController.close();
   });
+
+  await for (final messages in streamController.stream) {
+    yield messages;
+  }
 }
 
 @riverpod
@@ -758,13 +737,10 @@ Stream<Map<String, int>> getUnreadMessageCounts(Ref ref) async* {
     return;
   }
 
-  // Create a stream controller to handle real-time updates
   final streamController = StreamController<Map<String, int>>();
 
-  // Initial fetch
   yield await _fetchUnreadCounts(supabase, currentUserId);
 
-  // Listen to real-time changes
   final channel = supabase
       .channel('unread_counts_$currentUserId')
       .onPostgresChanges(
@@ -773,34 +749,26 @@ Stream<Map<String, int>> getUnreadMessageCounts(Ref ref) async* {
         table: 'messages',
         callback: (payload) async {
           final newCounts = await _fetchUnreadCounts(supabase, currentUserId);
-          streamController.add(newCounts);
+          if (!streamController.isClosed) {
+            streamController.add(newCounts);
+          }
         },
       )
       .subscribe();
 
-  // Listen to the stream controller for updates
-  await for (final counts in streamController.stream) {
-    yield counts;
-  }
-
-  // Cleanup
   ref.onDispose(() {
     supabase.removeChannel(channel);
     streamController.close();
   });
+
+  await for (final counts in streamController.stream) {
+    yield counts;
+  }
 }
 
-// Helper function to create a unique conversation key
-String _getConversationKey(
-  String currentUserId,
-  String senderId,
-  String receiverId,
-) {
-  final users = [senderId, receiverId]..sort();
-  return '${users[0]}_${users[1]}';
-}
-
-// Helper function to fetch last messages
+// ─────────────────────────────────────────────
+// Helper: fetch last messages
+// ─────────────────────────────────────────────
 Future<Map<String, MessageModel>> _fetchLastMessages(
   SupabaseClient supabase,
   String currentUserId,
@@ -808,12 +776,7 @@ Future<Map<String, MessageModel>> _fetchLastMessages(
   try {
     final response = await supabase
         .from('messages')
-        .select('''
-          *,
-          conversations!inner(
-            name
-          )
-        ''')
+        .select('*')
         .or('sender_id.eq.$currentUserId,receiver_id.eq.$currentUserId')
         .neq('is_deleted', true)
         .order('created_at', ascending: false);
@@ -837,12 +800,14 @@ Future<Map<String, MessageModel>> _fetchLastMessages(
 
     return lastMessages;
   } catch (e) {
-    // Error handling without print in production
+    talker.error('Error fetching last messages', e);
     return {};
   }
 }
 
-// Helper function to fetch unread message counts
+// ─────────────────────────────────────────────
+// Helper: fetch unread counts
+// ─────────────────────────────────────────────
 Future<Map<String, int>> _fetchUnreadCounts(
   SupabaseClient supabase,
   String currentUserId,
@@ -850,7 +815,7 @@ Future<Map<String, int>> _fetchUnreadCounts(
   try {
     final response = await supabase
         .from('messages')
-        .select()
+        .select('sender_id, receiver_id')
         .eq('receiver_id', currentUserId)
         .neq('is_deleted', true)
         .filter('read_at', 'is', null);
@@ -858,18 +823,19 @@ Future<Map<String, int>> _fetchUnreadCounts(
     final Map<String, int> unreadCounts = {};
 
     for (final messageData in response as List) {
-      final message = MessageModel.fromJson(messageData);
+      final senderId = messageData['sender_id'] as String? ?? '';
+      final receiverId = messageData['receiver_id'] as String? ?? '';
       final conversationKey = _getConversationKey(
         currentUserId,
-        message.senderId,
-        message.receiverId,
+        senderId,
+        receiverId,
       );
       unreadCounts[conversationKey] = (unreadCounts[conversationKey] ?? 0) + 1;
     }
 
     return unreadCounts;
   } catch (e) {
-    // Error handling without print in production
+    talker.error('Error fetching unread counts', e);
     return {};
   }
 }
