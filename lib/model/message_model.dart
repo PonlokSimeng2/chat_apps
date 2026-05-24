@@ -2,7 +2,7 @@ import 'message_status.dart';
 
 class MessageModel {
   final int? id;
-  final String? tempId; // Temporary ID for optimistic updates
+  final String? tempId;
   final int conversationId;
   final String senderId;
   final String receiverId;
@@ -39,6 +39,24 @@ class MessageModel {
     this.status = MessageStatus.sent,
   });
 
+  // ✅ Robust UTC parser — handles all Supabase timestamp formats
+  static DateTime? _parseUtc(dynamic value) {
+    if (value == null) return null;
+    // Replace space with T for ISO 8601 compatibility
+    // e.g. "2026-04-12 23:35:51+00" → "2026-04-12T23:35:51+00"
+    final str = value.toString().replaceFirst(' ', 'T');
+    try {
+      if (!str.contains('+') && !str.endsWith('Z')) {
+        // No timezone info → treat as UTC by appending Z
+        return DateTime.parse('${str}Z').toUtc();
+      }
+      return DateTime.parse(str).toUtc();
+    } catch (e) {
+      // If parse fails, return null (will show "now" as fallback)
+      return null;
+    }
+  }
+
   factory MessageModel.fromJson(Map<String, dynamic> json) {
     return MessageModel(
       id: json['id'] != null ? int.tryParse(json['id'].toString()) : null,
@@ -58,21 +76,14 @@ class MessageModel {
           : null,
       isEdited: json['is_edited'] ?? false,
       isDeleted: json['is_deleted'] ?? false,
-      readAt: json['read_at'] != null
-          ? DateTime.parse(json['read_at'])
-          : null,
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
-          : null,
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
-          : null,
+      readAt: _parseUtc(json['read_at']),
+      createdAt: _parseUtc(json['created_at']),
+      updatedAt: _parseUtc(json['updated_at']),
       status: _parseMessageStatus(json),
     );
   }
 
   static MessageStatus _parseMessageStatus(Map<String, dynamic> json) {
-    // Determine status based on read_at and other fields
     if (json['read_at'] != null) {
       return MessageStatus.read;
     } else if (json['id'] != null) {
@@ -97,9 +108,9 @@ class MessageModel {
       'reply_to_message_id': replyToMessageId,
       'is_edited': isEdited ?? false,
       'is_deleted': isDeleted ?? false,
-      'read_at': readAt?.toIso8601String(),
-      'created_at': createdAt?.toIso8601String(),
-      'updated_at': updatedAt?.toIso8601String(),
+      'read_at': readAt?.toUtc().toIso8601String(),
+      'created_at': createdAt?.toUtc().toIso8601String(),
+      'updated_at': updatedAt?.toUtc().toIso8601String(),
       'status': status.name,
     };
   }
@@ -144,10 +155,12 @@ class MessageModel {
     );
   }
 
-  // Check if message is unread
   bool get isUnread => readAt == null;
 
-  // Factory method for creating temporary message (optimistic UI)
+  bool get isTemp => tempId != null && id == null;
+
+  String get uniqueId => tempId ?? id.toString();
+
   factory MessageModel.createTemp({
     required int conversationId,
     required String senderId,
@@ -155,7 +168,8 @@ class MessageModel {
     required String content,
     String messageType = 'text',
   }) {
-    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}_${senderId.hashCode}';
+    final tempId =
+        'temp_${DateTime.now().millisecondsSinceEpoch}_${senderId.hashCode}';
     return MessageModel(
       tempId: tempId,
       conversationId: conversationId,
@@ -163,14 +177,8 @@ class MessageModel {
       receiverId: receiverId,
       content: content,
       messageType: messageType,
-      createdAt: DateTime.now(),
+      createdAt: DateTime.now().toUtc(), // ✅ UTC
       status: MessageStatus.sending,
     );
   }
-
-  // Check if this is a temporary message
-  bool get isTemp => tempId != null && id == null;
-
-  // Get the unique identifier for this message (tempId or id)
-  String get uniqueId => tempId ?? id.toString();
 }

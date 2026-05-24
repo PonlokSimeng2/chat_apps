@@ -14,7 +14,6 @@ class ContactsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final getAllUsers = ref.watch(getAllUsersProvider);
-    final getConversationUsers = ref.watch(conversationUsersProvider);
     final searchQuery = ref.watch(contactsSearchProvider);
     final currentUser = ref.watch(currentUserProvider);
 
@@ -83,103 +82,87 @@ class ContactsScreen extends ConsumerWidget {
               data: (currentUserData) {
                 return getAllUsers.when(
                   data: (allUsers) {
-                    return getConversationUsers.when(
-                      data: (conversationUsers) {
-                        // Get users you haven't chatted with yet
-                        final currentUserId = currentUserData?.id;
-                        final filteredUsers = allUsers.where((user) {
-                          // Exclude current user
-                          if (currentUserId != null &&
-                              user.id == currentUserId) {
-                            return false;
-                          }
-                          // Exclude users you already have conversations with
-                          if (conversationUsers.any(
-                            (convUser) => convUser.id == user.id,
-                          )) {
-                            return false;
-                          }
-                          // Filter based on search query
-                          return user.displayName.toLowerCase().contains(
-                            searchQuery.toLowerCase(),
-                          );
-                        }).toList();
+                    final currentUserId = currentUserData?.id;
+                    final filteredUsers = allUsers.where((user) {
+                      // Exclude current user
+                      if (currentUserId != null && user.id == currentUserId) {
+                        return false;
+                      }
+                      // Filter based on search query
+                      return user.displayName.toLowerCase().contains(
+                        searchQuery.toLowerCase(),
+                      );
+                    }).toList();
 
-                        if (filteredUsers.isEmpty) {
-                          return const Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.people_outline,
-                                  size: 64,
-                                  color: Colors.grey,
-                                ),
-                                SizedBox(height: 16),
-                                Text(
-                                  'No new contacts available',
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                SizedBox(height: 8),
-                                Text(
-                                  'All users are already in your conversations',
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
+                    if (filteredUsers.isEmpty) {
+                      return const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.people_outline,
+                              size: 64,
+                              color: Colors.grey,
                             ),
-                          );
-                        }
+                            SizedBox(height: 16),
+                            Text(
+                              'No contacts found',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Try searching with a different name',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
 
-                        return ListView.builder(
-                          itemCount: filteredUsers.length,
-                          itemBuilder: (context, index) {
-                            final user = filteredUsers[index];
-                            return ContactTile(
-                              user: user,
-                              currentUserId:
-                                  currentUserData?.id?.toString() ?? '',
-                              onTap: () async {
-                                // Create or get private conversation
-                                final conversationId = await ref.read(
-                                  createOrGetPrivateConversationProvider(
-                                    user.id!,
-                                  ).future,
-                                );
-
-                                if (context.mounted) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => ChatScreen(
-                                        senderId:
-                                            currentUserData?.id?.toString() ??
-                                            '',
-                                        otherUserName: user.displayName,
-                                        otherUserAvatar:
-                                            user.profilePictureUrl ??
-                                            'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
-                                        receiverId: user.id?.toString() ?? '',
-                                        conversationId: conversationId,
-                                      ),
-                                    ),
-                                  );
-                                }
-                              },
+                    return ListView.builder(
+                      itemCount: filteredUsers.length,
+                      itemBuilder: (context, index) {
+                        final user = filteredUsers[index];
+                        return ContactTile(
+                          user: user,
+                          currentUserId: currentUserData?.id?.toString() ?? '',
+                          onTap: () async {
+                            // Create or get private conversation
+                            final conversationId = await ref.read(
+                              createOrGetPrivateConversationProvider(
+                                user.id!,
+                              ).future,
                             );
+
+                            if (context.mounted) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ChatScreen(
+                                    senderId:
+                                        currentUserData?.id?.toString() ?? '',
+                                    otherUserName: user.displayName,
+                                    otherUserAvatar:
+                                        user.profilePictureUrl ??
+                                        'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
+                                    receiverId: user.id?.toString() ?? '',
+                                    conversationId: conversationId,
+                                    isOnline: user.isOnline ?? false, // ← ADD
+                                    lastSeenAt: user.lastSeenAt,
+                                  ),
+                                ),
+                              );
+                            }
                           },
                         );
                       },
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
-                      error: (error, stackTrace) =>
-                          Center(child: Text('Error: $error')),
                     );
                   },
                   loading: () =>

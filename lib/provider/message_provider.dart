@@ -114,7 +114,27 @@ class MessageNotifier extends _$MessageNotifier {
     try {
       final newData = payload.newRecord;
       if (newData.isEmpty) return;
+
+      talker.info('Raw created_at from realtime: ${newData['created_at']}');
       final newMessage = MessageModel.fromJson(newData);
+      talker.info(
+        'Parsed createdAt: ${newMessage.createdAt} | isUtc: ${newMessage.createdAt?.isUtc}',
+      );
+
+      // ✅ Skip if message already exists (was added by sendMessage response)
+      final alreadyExists =
+          state.value?.any(
+            (msg) => msg.id != null && msg.id == newMessage.id,
+          ) ??
+          false;
+
+      if (alreadyExists) {
+        talker.info(
+          'Message ${newMessage.id} already exists, skipping realtime insert',
+        );
+        return;
+      }
+
       talker.info('New message received from ${newMessage.senderId}');
       addMessage(newMessage);
     } catch (e, st) {
@@ -261,8 +281,6 @@ class MessageNotifier extends _$MessageNotifier {
         'reply_to_message_id': replyToMessageId,
         'is_edited': false,
         'is_deleted': false,
-        'created_at': DateTime.now().toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
       };
 
       newMessageData.removeWhere((key, value) => value == null);

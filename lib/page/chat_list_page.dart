@@ -269,6 +269,10 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                                                         '',
                                                     conversationId:
                                                         conversationId,
+                                                    isOnline:
+                                                        user.isOnline ??
+                                                        false, // ← ADD
+                                                    lastSeenAt: user.lastSeenAt,
                                                   ),
                                                 ),
                                               );
@@ -615,8 +619,8 @@ class ConversationTile extends StatelessWidget {
   }
 
   String _formatMessageTime(DateTime messageTime) {
-    final now = DateTime.now();
-    final difference = now.difference(messageTime);
+    final now = DateTime.now().toUtc(); // ← add .toUtc()
+    final difference = now.difference(messageTime.toUtc()); // ← add .toUtc()
 
     if (difference.inMinutes < 1) {
       return 'now';
@@ -633,20 +637,16 @@ class ConversationTile extends StatelessWidget {
 
   String _formatLastSeenShort(DateTime? lastSeenAt) {
     if (lastSeenAt == null) return '';
-    Duration difference = DateTime.now().toUtc().difference(lastSeenAt.toUtc());
-    if (difference.isNegative) {
-      difference = difference.abs();
-    }
-    if (difference.inMinutes < 1) {
-      return '1m';
-    } else if (difference.inHours < 1) {
-      return '${difference.inMinutes}m';
-    } else if (difference.inDays < 1) {
-      return '${difference.inHours}h';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays}d';
-    } else {
-      return '${lastSeenAt.day}/${lastSeenAt.month}';
-    }
+    final now = DateTime.now().toUtc(); // ← toUtc()
+    final lastSeen = lastSeenAt.toUtc(); // ← toUtc()
+    Duration difference = now.difference(lastSeen);
+
+    if (difference.isNegative) difference = difference.abs();
+
+    if (difference.inMinutes < 1) return 'now';
+    if (difference.inHours < 1) return '${difference.inMinutes}m';
+    if (difference.inDays < 1) return '${difference.inHours}h';
+    if (difference.inDays < 7) return '${difference.inDays}d';
+    return '${lastSeenAt.day}/${lastSeenAt.month}';
   }
 }

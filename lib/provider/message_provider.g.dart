@@ -43,7 +43,7 @@ final class MessageNotifierProvider
   }
 }
 
-String _$messageNotifierHash() => r'cb6ac2f8832b7c6b5c7315da7d6546d4c77894c9';
+String _$messageNotifierHash() => r'81b3a2732ae579574169cee08b0fe299cfc40dab';
 
 abstract class _$MessageNotifier
     extends $Notifier<AsyncValue<List<MessageModel>>> {

@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../model/message_model.dart';
 import '../model/message_status.dart';
-import '../model/message_reactions_model.dart';
 import '../provider/message_provider.dart';
 import '../provider/error_provider.dart';
 import '../provider/emoji_provider.dart';
@@ -21,6 +20,8 @@ class ChatScreen extends ConsumerStatefulWidget {
   final String otherUserName;
   final String otherUserAvatar;
   final String receiverId;
+  final bool isOnline; // ← ADD
+  final DateTime? lastSeenAt; // ← ADD
 
   const ChatScreen({
     super.key,
@@ -29,6 +30,8 @@ class ChatScreen extends ConsumerStatefulWidget {
     required this.senderId,
     required this.otherUserName,
     required this.otherUserAvatar,
+    this.isOnline = false, // ← ADD
+    this.lastSeenAt,
   });
 
   @override
@@ -236,6 +239,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
+  String _formatLastSeen(DateTime? lastSeenAt) {
+    if (lastSeenAt == null) return 'Offline';
+    Duration diff = DateTime.now().toUtc().difference(lastSeenAt.toUtc());
+    if (diff.isNegative) diff = diff.abs();
+    if (diff.inMinutes < 1) return 'last seen just now';
+    if (diff.inHours < 1) return 'last seen ${diff.inMinutes}m ago';
+    if (diff.inDays < 1) return 'last seen ${diff.inHours}h ago';
+    if (diff.inDays < 7) return 'last seen ${diff.inDays}d ago';
+    return 'last seen ${lastSeenAt.toLocal().day}/${lastSeenAt.toLocal().month}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final messagesState = ref.watch(messageProvider);
@@ -273,7 +287,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     width: 12,
                     height: 12,
                     decoration: BoxDecoration(
-                      color: Colors.green,
+                      color: widget.isOnline
+                          ? Colors.green
+                          : Colors.grey, // ← real status
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.black, width: 2),
                     ),
@@ -293,9 +309,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const Text(
-                  'Online',
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                Text(
+                  widget.isOnline
+                      ? 'Online'
+                      : _formatLastSeen(widget.lastSeenAt),
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ],
             ),
@@ -983,12 +1001,22 @@ class MessageBubble extends ConsumerWidget {
   }
 
   String _formatTime(DateTime messageTime) {
-    final now = DateTime.now();
-    final difference = now.difference(messageTime);
+    final now = DateTime.now().toUtc();
+    final msgUtc = messageTime.toUtc();
+    final difference = now.difference(msgUtc);
+
     if (difference.inMinutes < 1) return 'now';
     if (difference.inHours < 1) return '${difference.inMinutes}m ago';
-    if (difference.inDays < 1) return '${difference.inHours}h ago';
-    return '${messageTime.day}/${messageTime.month}';
+    if (difference.inDays < 1) {
+      // Show actual time like "10:30 PM"
+      final hour = msgUtc.toLocal().hour;
+      final minute = msgUtc.toLocal().minute.toString().padLeft(2, '0');
+      final period = hour >= 12 ? 'PM' : 'AM';
+      final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+      return '$displayHour:$minute $period';
+    }
+    if (difference.inDays < 7) return '${difference.inDays}d ago';
+    return '${messageTime.toLocal().day}/${messageTime.toLocal().month}';
   }
 }
 
