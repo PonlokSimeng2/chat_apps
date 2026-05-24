@@ -275,7 +275,7 @@ class ContactTile extends StatelessWidget {
                       const SizedBox(width: 6),
                       Text(
                         user.isOnline == true
-                            ? 'Available to chat'
+                            ? 'Online'
                             : _formatLastSeen(user.lastSeenAt),
                         style: TextStyle(
                           color: user.isOnline == true
