@@ -11,7 +11,6 @@ Future<void> updateUserProfileWidget(
   WidgetRef ref, {
   String? displayName,
   String? bio,
-  String? website,
   String? phoneNumber,
   String? profilePictureUrl,
 }) async {
@@ -23,13 +22,12 @@ Future<void> updateUserProfileWidget(
   final updateData = <String, dynamic>{};
   if (displayName != null) updateData['display_name'] = displayName;
   if (bio != null) updateData['bio'] = bio;
-  if (website != null) updateData['website'] = website;
   if (phoneNumber != null) updateData['phone_number'] = phoneNumber;
   if (profilePictureUrl != null)
     updateData['profile_picture_url'] = profilePictureUrl;
 
   if (updateData.isNotEmpty) {
-    updateData['update_at'] = DateTime.now().toIso8601String();
+    updateData['updated_at'] = DateTime.now().toIso8601String();
 
     await supabase.client.from('users').update(updateData).eq('id', userId);
 
@@ -112,7 +110,9 @@ Future<int> createOrGetPrivateConversation(Ref ref, String otherUserId) async {
   final currentUserId = ref.watch(authProvider);
   if (currentUserId == null) throw Exception('User not authenticated');
 
-  print('🔐 Creating private conversation between $currentUserId and $otherUserId');
+  print(
+    '🔐 Creating private conversation between $currentUserId and $otherUserId',
+  );
 
   // Since conversation_participants table doesn't exist, create a unique conversation per user pair
   // Using a hash of user IDs to ensure uniqueness
@@ -127,7 +127,9 @@ Future<int> createOrGetPrivateConversation(Ref ref, String otherUserId) async {
       .maybeSingle();
 
   if (existingConversation != null) {
-    print('✅ Found existing conversation with ID: ${existingConversation['id']}');
+    print(
+      '✅ Found existing conversation with ID: ${existingConversation['id']}',
+    );
     return existingConversation['id'] as int;
   }
 
@@ -136,7 +138,8 @@ Future<int> createOrGetPrivateConversation(Ref ref, String otherUserId) async {
       .from('conversations')
       .insert({
         'name': conversationName, // Use conversation name as unique identifier
-        'description': 'Private conversation between $currentUserId and $otherUserId',
+        'description':
+            'Private conversation between $currentUserId and $otherUserId',
         'created_by': currentUserId,
         'is_active': true,
         'created_at': DateTime.now().toIso8601String(),
@@ -156,7 +159,6 @@ Future<void> updateUserProfile(
   Ref ref, {
   String? displayName,
   String? bio,
-  String? website,
   String? phoneNumber,
   String? profilePictureUrl,
 }) async {
@@ -168,13 +170,12 @@ Future<void> updateUserProfile(
   final updateData = <String, dynamic>{};
   if (displayName != null) updateData['display_name'] = displayName;
   if (bio != null) updateData['bio'] = bio;
-  if (website != null) updateData['website'] = website;
   if (phoneNumber != null) updateData['phone_number'] = phoneNumber;
   if (profilePictureUrl != null)
     updateData['profile_picture_url'] = profilePictureUrl;
 
   if (updateData.isNotEmpty) {
-    updateData['update_at'] = DateTime.now().toIso8601String();
+    updateData['updated_at'] = DateTime.now().toIso8601String();
 
     await supabase.client.from('users').update(updateData).eq('id', userId);
 

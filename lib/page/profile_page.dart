@@ -84,7 +84,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         ref,
         displayName: _displayNameController.text.trim(),
         bio: _bioController.text.trim(),
-        website: _websiteController.text.trim(),
         phoneNumber: _phoneNumberController.text.trim(),
         profilePictureUrl: imageUrl,
       );
@@ -102,6 +101,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      print("Error updating profile: $e"); // 🔥 DEBUG
     } finally {
       setState(() => _isLoading = false);
     }

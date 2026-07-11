@@ -19,7 +19,6 @@ class ChatListPageWithoutHelper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // ❌ Manual breakpoint detection in EVERY widget
-    final isMobile = ResponsiveBreakpoints.of(context).isMobile;
     final isTablet = ResponsiveBreakpoints.of(context).isTablet;
     final isDesktop = ResponsiveBreakpoints.of(context).isDesktop;
 
@@ -168,7 +167,6 @@ class _ChatTileWithoutHelper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // ❌ Same manual breakpoint detection AGAIN
-    final isMobile = ResponsiveBreakpoints.of(context).isMobile;
     final isTablet = ResponsiveBreakpoints.of(context).isTablet;
     final isDesktop = ResponsiveBreakpoints.of(context).isDesktop;
 
@@ -290,7 +288,6 @@ class ResponsiveButtonWithoutHelper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // ❌ Same manual breakpoint detection YET AGAIN
-    final isMobile = ResponsiveBreakpoints.of(context).isMobile;
     final isTablet = ResponsiveBreakpoints.of(context).isTablet;
     final isDesktop = ResponsiveBreakpoints.of(context).isDesktop;
 
@@ -310,11 +307,6 @@ class ResponsiveButtonWithoutHelper extends StatelessWidget {
         : isTablet
         ? 14.0
         : 12.0;
-    final horizontalPadding = isDesktop
-        ? 32.0
-        : isTablet
-        ? 24.0
-        : 16.0;
 
     return SizedBox(
       width: double.infinity,
@@ -349,7 +341,6 @@ class ResponsiveGridWithoutHelper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // ❌ Manual breakpoint detection EVERYWHERE
-    final isMobile = ResponsiveBreakpoints.of(context).isMobile;
     final isTablet = ResponsiveBreakpoints.of(context).isTablet;
     final isDesktop = ResponsiveBreakpoints.of(context).isDesktop;
 
@@ -405,7 +396,6 @@ class _GridItemWithoutHelper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // ❌ Manual breakpoint detection AGAIN AND AGAIN
-    final isMobile = ResponsiveBreakpoints.of(context).isMobile;
     final isTablet = ResponsiveBreakpoints.of(context).isTablet;
     final isDesktop = ResponsiveBreakpoints.of(context).isDesktop;
 
