@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:chat_apps/component/las_seen.dart';
+import 'package:chat_apps/component/online_status_badge.dart';
+import 'package:chat_apps/utils/responsive_helper.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/foundation.dart' as foundation;
 import 'package:flutter/services.dart';
@@ -239,21 +242,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  String _formatLastSeen(DateTime? lastSeenAt) {
-    if (lastSeenAt == null) return 'Offline';
-    Duration diff = DateTime.now().toUtc().difference(lastSeenAt.toUtc());
-    if (diff.isNegative) diff = diff.abs();
-    if (diff.inMinutes < 1) return 'last seen just now';
-    if (diff.inHours < 1) return 'last seen ${diff.inMinutes}m ago';
-    if (diff.inDays < 1) return 'last seen ${diff.inHours}h ago';
-    if (diff.inDays < 7) return 'last seen ${diff.inDays}d ago';
-    return 'last seen ${lastSeenAt.toLocal().day}/${lastSeenAt.toLocal().month}';
-  }
+  // String _formatLastSeen(DateTime? lastSeenAt) {
+  //   if (lastSeenAt == null) return 'Offline';
+  //   Duration diff = DateTime.now().toUtc().difference(lastSeenAt.toUtc());
+  //   if (diff.isNegative) diff = diff.abs();
+  //   if (diff.inMinutes < 1) return 'last seen just now';
+  //   if (diff.inHours < 1) return 'last seen ${diff.inMinutes}m ago';
+  //   if (diff.inDays < 1) return 'last seen ${diff.inHours}h ago';
+  //   if (diff.inDays < 7) return 'last seen ${diff.inDays}d ago';
+  //   return 'last seen ${lastSeenAt.toLocal().day}/${lastSeenAt.toLocal().month}';
+  // }
 
   @override
   Widget build(BuildContext context) {
     final messagesState = ref.watch(messageProvider);
-
+    final avatarSize = ResponsiveHelper.getSmallAvatarSize(context);
     ref.listen<AsyncValue<List<MessageModel>>>(messageProvider, (_, next) {
       if (next is AsyncData) {
         final newCount = next.value?.length ?? 0;
@@ -281,18 +284,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   radius: 20,
                 ),
                 Positioned(
-                  bottom: 0,
                   right: 0,
-                  child: Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: widget.isOnline
-                          ? Colors.green
-                          : Colors.grey, // ← real status
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.black, width: 2),
-                    ),
+                  bottom: 0,
+                  child: OnlineStatusBadge(
+                    isOnline: widget.isOnline, // ← fixed: was `user.isOnline`
+                    lastSeenAt:
+                        widget.lastSeenAt, // ← fixed: was `user.lastSeenAt`
+                    avatarSize: avatarSize,
                   ),
                 ),
               ],
@@ -312,7 +310,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 Text(
                   widget.isOnline
                       ? 'Online'
-                      : _formatLastSeen(widget.lastSeenAt),
+                      : formatLastSeenShort(widget.lastSeenAt),
                   style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ],

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:chat_apps/component/las_seen.dart';
 import 'package:chat_apps/page/chat_screen.dart';
 import 'package:chat_apps/provider/user_provider.dart';
 import 'package:chat_apps/provider/message_provider.dart';
@@ -456,7 +457,7 @@ class ConversationTile extends StatelessWidget {
                             ),
                           ),
                           child: Text(
-                            _formatLastSeenShort(user.lastSeenAt),
+                            formatLastSeenShort(user.lastSeenAt),
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: avatarSize * 0.14,
@@ -563,7 +564,7 @@ class ConversationTile extends StatelessWidget {
                       if (user.isOnline != true && user.lastSeenAt != null) ...[
                         const SizedBox(width: 8),
                         Text(
-                          _formatLastSeenShort(user.lastSeenAt),
+                          formatLastSeenShort(user.lastSeenAt),
                           style: TextStyle(
                             color: const Color(0xFF9CA3AF),
                             fontSize: fontSizeTime,
@@ -633,20 +634,5 @@ class ConversationTile extends StatelessWidget {
     } else {
       return '${messageTime.day}/${messageTime.month}';
     }
-  }
-
-  String _formatLastSeenShort(DateTime? lastSeenAt) {
-    if (lastSeenAt == null) return '';
-    final now = DateTime.now().toUtc(); // ← toUtc()
-    final lastSeen = lastSeenAt.toUtc(); // ← toUtc()
-    Duration difference = now.difference(lastSeen);
-
-    if (difference.isNegative) difference = difference.abs();
-
-    if (difference.inMinutes < 1) return 'now';
-    if (difference.inHours < 1) return '${difference.inMinutes}m';
-    if (difference.inDays < 1) return '${difference.inHours}h';
-    if (difference.inDays < 7) return '${difference.inDays}d';
-    return '${lastSeenAt.day}/${lastSeenAt.month}';
   }
 }
