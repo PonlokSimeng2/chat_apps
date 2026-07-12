@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chat_apps/component/las_seen.dart';
 import 'package:chat_apps/component/online_status_badge.dart';
 import 'package:chat_apps/utils/responsive_helper.dart';
@@ -284,19 +285,51 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
-        centerTitle: true,
+        toolbarHeight: 70, // ✅ give it more height
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
+        // ✅ Use Row layout instead of Column — more like WhatsApp/Telegram style
+        titleSpacing: 0, // ✅ remove extra left padding
+        title: Row(
           children: [
             Stack(
+              clipBehavior: Clip.none,
               children: [
-                CircleAvatar(
-                  backgroundImage: NetworkImage(widget.otherUserAvatar),
-                  radius: 20,
+                ClipOval(
+                  child: CachedNetworkImage(
+                    imageUrl: widget.otherUserAvatar,
+                    width: 45,
+                    height: 45,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      width: 45,
+                      height: 45,
+                      color: Colors.grey[800],
+                      child: const CircularProgressIndicator(
+                        strokeWidth: 1,
+                        color: Colors.white,
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      width: 45,
+                      height: 45,
+                      color: Colors.blue[700],
+                      child: Center(
+                        child: Text(
+                          widget.otherUserName.isNotEmpty
+                              ? widget.otherUserName[0].toUpperCase()
+                              : '?',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
                 Positioned(
                   right: 0,
@@ -304,25 +337,32 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   child: OnlineStatusBadge(
                     isOnline: widget.isOnline,
                     lastSeenAt: widget.lastSeenAt,
-                    avatarSize: avatarSize,
+                    avatarSize: 45,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              widget.otherUserName,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(
-              widget.isOnline
-                  ? 'Online'
-                  : formatLastSeenShort(widget.lastSeenAt),
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
+            const SizedBox(width: 10),
+            // ✅ Name and status next to avatar
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.otherUserName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  widget.isOnline
+                      ? 'Online'
+                      : formatLastSeenShort(widget.lastSeenAt),
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ],
             ),
           ],
         ),
