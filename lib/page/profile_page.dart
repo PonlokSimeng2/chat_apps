@@ -16,95 +16,143 @@ class ProfilePage extends ConsumerStatefulWidget {
 }
 
 class _ProfilePageState extends ConsumerState<ProfilePage> {
-  final _formKey = GlobalKey<FormState>();
-
-  final _displayNameController = TextEditingController();
-  final _bioController = TextEditingController();
-  final _websiteController = TextEditingController();
-  final _phoneNumberController = TextEditingController();
-
   File? _selectedImage;
-  bool _isEditing = false;
-  bool _isLoading = false;
-  String? _profileImageUrl;
+  bool _isSaving = false;
+  bool _notificationsEnabled = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadUserData();
-  }
-
-  void _loadUserData() {
-    final user = ref.read(currentUserProvider);
-
-    user.whenData((userData) {
-      if (userData != null) {
-        _displayNameController.text = userData.displayName;
-        _bioController.text = userData.bio ?? '';
-        _websiteController.text = userData.website ?? '';
-        _phoneNumberController.text = userData.phoneNumber ?? '';
-
-        _profileImageUrl = userData.profilePictureUrl;
-
-        print("IMAGE URL: $_profileImageUrl"); // 🔥 DEBUG
-      }
-    });
-  }
-
-  Future<void> _pickImage() async {
+  Future<void> _pickAndUploadImage() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery);
+    if (picked == null) return;
 
-    if (picked != null) {
-      setState(() {
-        _selectedImage = File(picked.path); // ✅ instant preview
-      });
-    }
-  }
-
-  Future<void> _saveProfile() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
+    final file = File(picked.path);
+    setState(() {
+      _selectedImage = file; // instant preview
+      _isSaving = true;
+    });
 
     try {
-      String? imageUrl = _profileImageUrl;
+      final bytes = await file.readAsBytes();
+      final imageUrl = await uploadProfilePictureWidget(ref, file.path, bytes);
 
-      if (_selectedImage != null) {
-        final bytes = await _selectedImage!.readAsBytes();
-
-        imageUrl = await uploadProfilePictureWidget(
-          ref,
-          _selectedImage!.path,
-          bytes,
-        );
-      }
+      final current = ref.read(currentUserProvider).value;
 
       await updateUserProfileWidget(
         ref,
-        displayName: _displayNameController.text.trim(),
-        bio: _bioController.text.trim(),
-        phoneNumber: _phoneNumberController.text.trim(),
+        username: current?.username ?? '',
+        bio: current?.bio ?? '',
+        phoneNumber: current?.phoneNumber ?? '',
         profilePictureUrl: imageUrl,
       );
 
-      setState(() {
-        _profileImageUrl = imageUrl;
-        _selectedImage = null;
-        _isEditing = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile updated successfully')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Profile photo updated')));
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
-      print("Error updating profile: $e"); // 🔥 DEBUG
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  Future<void> _editTextField({
+    required String title,
+    required String initialValue,
+    required Future<void> Function(String newValue) onSave,
+  }) async {
+    final controller = TextEditingController(text: initialValue);
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1C1C1E),
+        title: Text('Edit $title', style: const TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: 'Enter $title',
+            hintStyle: const TextStyle(color: Colors.grey),
+            enabledBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.grey),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result != initialValue) {
+      setState(() => _isSaving = true);
+      try {
+        await onSave(result);
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('$title updated')));
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        }
+      } finally {
+        if (mounted) setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  void _showSettingsSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1C1C1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade600,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text('Log Out', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                _logOut();
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -112,150 +160,221 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final userAsync = ref.watch(currentUserProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1F1F1F),
+      backgroundColor: const Color(0xFF0B0B0F),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF2D2D2D),
-        title: const Text("Profile"),
+        backgroundColor: const Color(0xFF0B0B0F),
+        elevation: 0,
+        centerTitle: true,
+        title: const Text(
+          'Profile',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         actions: [
           IconButton(
-            icon: Icon(_isEditing ? Icons.save : Icons.edit),
-            onPressed: _isLoading
-                ? null
-                : () {
-                    if (_isEditing) {
-                      _saveProfile();
-                    } else {
-                      setState(() => _isEditing = true);
-                    }
-                  },
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.red),
-            onPressed: _logOut,
+            icon: const Icon(Icons.settings_outlined, color: Colors.white),
+            onPressed: _showSettingsSheet,
           ),
         ],
       ),
-
       body: userAsync.when(
         loading: () =>
             const Center(child: CircularProgressIndicator(color: Colors.white)),
-
-        error: (e, _) => Center(child: Text("Error: $e")),
-
+        error: (e, _) => Center(
+          child: Text('Error: $e', style: const TextStyle(color: Colors.white)),
+        ),
         data: (userData) {
           if (userData == null) {
-            return const Center(child: Text("User not found"));
+            return const Center(
+              child: Text(
+                'User not found',
+                style: TextStyle(color: Colors.white),
+              ),
+            );
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  const SizedBox(height: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Column(
+              children: [
+                const SizedBox(height: 12),
 
-                  // ✅ PROFILE IMAGE FIXED
-                  GestureDetector(
-                    onTap: _isEditing ? _pickImage : null,
-                    child: Stack(
-                      children: [
-                        // In your build method, inside the data: (userData) block:
-                        CircleAvatar(
-                          radius: 60,
-                          backgroundColor: Colors.grey[600],
-                          backgroundImage: _selectedImage != null
-                              ? FileImage(_selectedImage!)
-                                    as ImageProvider // 1. local picked image
-                              : (userData.profilePictureUrl !=
-                                        null && // 2. ✅ from provider, not stale state
-                                    userData.profilePictureUrl!.isNotEmpty)
-                              ? CachedNetworkImageProvider(
-                                  userData.profilePictureUrl!,
-                                )
-                              : null,
-                          child:
-                              (_selectedImage == null &&
-                                  (userData.profilePictureUrl == null ||
-                                      userData.profilePictureUrl!.isEmpty))
-                              ? const Icon(
-                                  Icons.person,
-                                  size: 60,
-                                  color: Colors.white,
-                                )
-                              : null,
-                        ),
-
-                        if (_isEditing)
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: const BoxDecoration(
-                                color: Colors.blue,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.camera_alt,
+                // ── Avatar with edit pencil ─────────────────────
+                GestureDetector(
+                  onTap: _isSaving ? null : _pickAndUploadImage,
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 60,
+                        backgroundColor: Colors.grey[600],
+                        backgroundImage: _selectedImage != null
+                            ? FileImage(_selectedImage!) as ImageProvider
+                            : (userData.profilePictureUrl != null &&
+                                  userData.profilePictureUrl!.isNotEmpty)
+                            ? CachedNetworkImageProvider(
+                                userData.profilePictureUrl!,
+                              )
+                            : null,
+                        child:
+                            (_selectedImage == null &&
+                                (userData.profilePictureUrl == null ||
+                                    userData.profilePictureUrl!.isEmpty))
+                            ? const Icon(
+                                Icons.person,
+                                size: 60,
                                 color: Colors.white,
-                                size: 20,
+                              )
+                            : null,
+                      ),
+                      if (_isSaving)
+                        Positioned.fill(
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.black45,
+                            ),
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
                               ),
                             ),
                           ),
-                      ],
+                        ),
+                      Positioned(
+                        bottom: 4,
+                        right: 4,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0B0B0F),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white24),
+                          ),
+                          child: const Icon(
+                            Icons.edit,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // ── Username (big title, tappable to edit) ─────
+                GestureDetector(
+                  onTap: () => _editTextField(
+                    title: 'Username',
+                    initialValue: userData.username,
+                    onSave: (value) => updateUserProfileWidget(
+                      ref,
+                      username: value,
+                      bio: userData.bio ?? '',
+                      phoneNumber: userData.phoneNumber ?? '',
+                      profilePictureUrl: userData.profilePictureUrl,
                     ),
                   ),
-
-                  const SizedBox(height: 30),
-
-                  _buildReadOnlyField(
-                    title: 'Username',
-                    value: userData.username,
+                  child: Text(
+                    userData.username,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
+                ),
 
-                  const SizedBox(height: 16),
+                const SizedBox(height: 4),
 
-                  _buildReadOnlyField(title: 'Email', value: userData.email),
-
-                  const SizedBox(height: 16),
-
-                  _buildEditableField(
-                    controller: _displayNameController,
-                    title: 'Display Name',
-                    hintText: 'Enter your display name',
-                    enabled: _isEditing,
+                // ── Status / bio ─────────────────────
+                GestureDetector(
+                  onTap: () => _editTextField(
+                    title: 'Status',
+                    initialValue: userData.bio ?? '',
+                    onSave: (value) => updateUserProfileWidget(
+                      ref,
+                      username: userData.username,
+                      bio: value,
+                      phoneNumber: userData.phoneNumber ?? '',
+                      profilePictureUrl: userData.profilePictureUrl,
+                    ),
                   ),
-
-                  const SizedBox(height: 16),
-
-                  _buildEditableField(
-                    controller: _bioController,
-                    title: 'Bio',
-                    hintText: 'Tell about yourself',
-                    enabled: _isEditing,
-                    maxLines: 3,
+                  child: Text(
+                    (userData.bio == null || userData.bio!.isEmpty)
+                        ? 'Available'
+                        : userData.bio!,
+                    style: const TextStyle(color: Colors.grey, fontSize: 15),
                   ),
+                ),
 
-                  const SizedBox(height: 16),
+                const SizedBox(height: 28),
 
-                  _buildEditableField(
-                    controller: _websiteController,
-                    title: 'Website',
-                    hintText: 'yourwebsite.com',
-                    enabled: _isEditing,
-                  ),
+                _buildSectionHeader('Account'),
+                const SizedBox(height: 12),
 
-                  const SizedBox(height: 16),
+                _buildInfoRow(
+                  label: 'Username',
+                  value: '@${userData.username}',
+                ),
+                const SizedBox(height: 10),
 
-                  _buildEditableField(
-                    controller: _phoneNumberController,
+                // ── Phone ─────────────────────
+                _buildInfoRow(
+                  label: 'Phone',
+                  value:
+                      (userData.phoneNumber == null ||
+                          userData.phoneNumber!.isEmpty)
+                      ? 'Add phone number'
+                      : userData.phoneNumber!,
+                  onTap: () => _editTextField(
                     title: 'Phone Number',
-                    hintText: '+123456789',
-                    enabled: _isEditing,
+                    initialValue: userData.phoneNumber ?? '',
+                    onSave: (value) => updateUserProfileWidget(
+                      ref,
+                      username: userData.username,
+                      bio: userData.bio ?? '',
+                      phoneNumber: value,
+                      profilePictureUrl: userData.profilePictureUrl,
+                    ),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 10),
+                _buildInfoRow(label: 'Email', value: userData.email),
+
+                const SizedBox(height: 28),
+
+                _buildSectionHeader('Settings'),
+                const SizedBox(height: 12),
+
+                _buildSwitchRow(
+                  label: 'Notifications',
+                  value: _notificationsEnabled,
+                  onChanged: (value) {
+                    setState(() => _notificationsEnabled = value);
+                  },
+                ),
+                const SizedBox(height: 10),
+                _buildChevronRow(
+                  label: 'Privacy',
+                  onTap: () {
+                    // TODO: navigate to privacy settings
+                  },
+                ),
+                const SizedBox(height: 10),
+                _buildChevronRow(
+                  label: 'Appearance',
+                  onTap: () {
+                    // TODO: navigate to appearance settings
+                  },
+                ),
+
+                const SizedBox(height: 24),
+              ],
             ),
           );
         },
@@ -263,26 +382,111 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     );
   }
 
-  Widget _buildReadOnlyField({required String title, required String value}) {
-    return ListTile(
-      title: Text(title, style: const TextStyle(color: Colors.grey)),
-      subtitle: Text(value, style: const TextStyle(color: Colors.white)),
+  Widget _buildSectionHeader(String title) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        title,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 
-  Widget _buildEditableField({
-    required TextEditingController controller,
-    required String title,
-    required String hintText,
-    required bool enabled,
-    int maxLines = 1,
+  Widget _buildInfoRow({
+    required String label,
+    required String value,
+    VoidCallback? onTap,
   }) {
-    return TextFormField(
-      controller: controller,
-      enabled: enabled,
-      maxLines: maxLines,
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(labelText: title, hintText: hintText),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1C1C1E),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+            ),
+            Flexible(
+              child: Text(
+                value,
+                textAlign: TextAlign.right,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.grey, fontSize: 15),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSwitchRow({
+    required String label,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1C1E),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+          ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: Colors.white,
+            activeTrackColor: Colors.grey.shade600,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChevronRow({
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1C1C1E),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.grey),
+          ],
+        ),
+      ),
     );
   }
 

@@ -1,4 +1,4 @@
-import 'package:chat_apps/page/chat_home_page.dart';
+import 'package:chat_apps/page/home_page.dart';
 import 'package:chat_apps/provider/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,14 +19,15 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
   late Animation<Offset> _slideAnimation;
   late Animation<double> _scaleAnimation;
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  
+
   // Updated controllers to include required fields
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _displayNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
-  
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
+
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
   bool _isLoading = false;
@@ -34,45 +35,34 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
   @override
   void initState() {
     super.initState();
-    
+
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
-    
+
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    
+
     _scaleController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeInOut,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.5),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.elasticOut,
-    ));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero).animate(
+          CurvedAnimation(parent: _slideController, curve: Curves.elasticOut),
+        );
 
-    _scaleAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _scaleController,
-      curve: Curves.elasticOut,
-    ));
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut),
+    );
 
     // Start animations
     _fadeController.forward();
@@ -104,12 +94,14 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
       });
 
       try {
-        final result = await ref.read(authProvider.notifier).signUp(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-          username: _usernameController.text.trim(),
-          displayName: _displayNameController.text.trim(),
-        );
+        final result = await ref
+            .read(authProvider.notifier)
+            .signUp(
+              email: _emailController.text.trim(),
+              password: _passwordController.text,
+              username: _usernameController.text.trim(),
+              displayName: _displayNameController.text.trim(),
+            );
 
         if (mounted) {
           setState(() {
@@ -133,13 +125,15 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
   }
 
   void _showSuccessDialog() {
-      Navigator.of(context).push(  
-    MaterialPageRoute(builder: (context) => const ChatHomePage()),   
-  );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => const ChatHomePage()));
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Account created successfully! Please check your email for verification.'),
+        content: const Text(
+          'Account created successfully! Please check your email for verification.',
+        ),
         backgroundColor: Colors.green,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -255,7 +249,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: Colors.white.withAlpha((255 * 0.2).round()),
+                                color: Colors.white.withAlpha(
+                                  (255 * 0.2).round(),
+                                ),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Icon(
@@ -287,9 +283,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 20),
-                
+
                 // Animated Form Container
                 Expanded(
                   child: SlideTransition(
@@ -318,9 +314,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
                                   borderRadius: BorderRadius.circular(2),
                                 ),
                               ),
-                              
+
                               const SizedBox(height: 30),
-                              
+
                               // Form Fields with validation
                               _buildAnimatedTextField(
                                 controller: _usernameController,
@@ -329,9 +325,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
                                 keyboardType: TextInputType.text,
                                 validator: _validateUsername,
                               ),
-                              
+
                               const SizedBox(height: 20),
-                              
+
                               _buildAnimatedTextField(
                                 controller: _displayNameController,
                                 hintText: 'Display Name',
@@ -339,9 +335,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
                                 keyboardType: TextInputType.text,
                                 validator: _validateDisplayName,
                               ),
-                              
+
                               const SizedBox(height: 20),
-                              
+
                               _buildAnimatedTextField(
                                 controller: _emailController,
                                 hintText: 'Email Address',
@@ -349,9 +345,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
                                 keyboardType: TextInputType.emailAddress,
                                 validator: _validateEmail,
                               ),
-                              
+
                               const SizedBox(height: 20),
-                              
+
                               _buildAnimatedTextField(
                                 controller: _passwordController,
                                 hintText: 'Password',
@@ -365,9 +361,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
                                   });
                                 },
                               ),
-                              
+
                               const SizedBox(height: 20),
-                              
+
                               _buildAnimatedTextField(
                                 controller: _confirmPasswordController,
                                 hintText: 'Confirm Password',
@@ -377,13 +373,14 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
                                 validator: _validateConfirmPassword,
                                 onTogglePassword: () {
                                   setState(() {
-                                    _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                                    _isConfirmPasswordVisible =
+                                        !_isConfirmPasswordVisible;
                                   });
                                 },
                               ),
-                              
+
                               const SizedBox(height: 30),
-                              
+
                               // Animated Sign Up Button
                               AnimatedContainer(
                                 duration: const Duration(milliseconds: 300),
@@ -399,7 +396,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
                                   borderRadius: BorderRadius.circular(28),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.indigo.withAlpha((255 * 0.3).round()),
+                                      color: Colors.indigo.withAlpha(
+                                        (255 * 0.3).round(),
+                                      ),
                                       blurRadius: 20,
                                       offset: const Offset(0, 10),
                                     ),
@@ -436,13 +435,17 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
                                     ),
                                   ),
                                 ),
-                              ),                          
+                              ),
                               const SizedBox(height: 24),
                               Row(
                                 children: [
-                                  Expanded(child: Divider(color: Colors.grey[300])),
+                                  Expanded(
+                                    child: Divider(color: Colors.grey[300]),
+                                  ),
                                   Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                    ),
                                     child: Text(
                                       'or continue with',
                                       style: TextStyle(
@@ -451,12 +454,14 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
                                       ),
                                     ),
                                   ),
-                                  Expanded(child: Divider(color: Colors.grey[300])),
+                                  Expanded(
+                                    child: Divider(color: Colors.grey[300]),
+                                  ),
                                 ],
                               ),
-                              
+
                               const SizedBox(height: 24),
-                              
+
                               Row(
                                 children: [
                                   Expanded(
@@ -476,9 +481,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
                                   ),
                                 ],
                               ),
-                              
+
                               const SizedBox(height: 24),
-                              
+
                               // Login Link
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -535,31 +540,21 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
       decoration: BoxDecoration(
         color: Colors.grey[50],
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.grey[200]!,
-          width: 1,
-        ),
+        border: Border.all(color: Colors.grey[200]!, width: 1),
       ),
       child: TextFormField(
         controller: controller,
         obscureText: isPassword && !isPasswordVisible,
         keyboardType: keyboardType,
         validator: validator,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-        ),
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: TextStyle(
             color: Colors.grey[500],
             fontWeight: FontWeight.w400,
           ),
-          prefixIcon: Icon(
-            icon,
-            color: Colors.grey[600],
-            size: 22,
-          ),
+          prefixIcon: Icon(icon, color: Colors.grey[600], size: 22),
           suffixIcon: isPassword
               ? IconButton(
                   icon: Icon(
@@ -575,10 +570,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
             horizontal: 20,
             vertical: 16,
           ),
-          errorStyle: const TextStyle(
-            fontSize: 12,
-            height: 0.8,
-          ),
+          errorStyle: const TextStyle(fontSize: 12, height: 0.8),
         ),
       ),
     );
@@ -603,11 +595,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                icon,
-                size: 24,
-                color: Colors.grey[700],
-              ),
+              Icon(icon, size: 24, color: Colors.grey[700]),
               const SizedBox(width: 8),
               Text(
                 label,

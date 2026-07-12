@@ -12,7 +12,6 @@ import 'package:flutter_riverpod/legacy.dart';
 
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
-// Helper function to create a unique conversation key
 String _getConversationKey(
   String currentUserId,
   String senderId,
@@ -36,9 +35,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
   void initState() {
     super.initState();
     _ticker = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (mounted) {
-        setState(() {});
-      }
+      if (mounted) setState(() {});
     });
   }
 
@@ -55,9 +52,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
     final getUnreadMessageCounts = ref.watch(getUnreadMessageCountsProvider);
     final searchQuery = ref.watch(searchQueryProvider);
     final currentUser = ref.watch(currentUserProvider);
-    // final newMessageAlert = ref.watch(newMessageAlertProvider);
 
-    // Use ResponsiveHelper for responsive calculations
     final headerPadding = ResponsiveHelper.getPadding(context);
     final avatarSize = ResponsiveHelper.getSmallAvatarSize(context);
     final titleFontSize = ResponsiveHelper.getHeadingFontSize(context);
@@ -66,44 +61,59 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
     final searchBorderRadius = ResponsiveHelper.getBorderRadius(context) * 1.5;
     final searchFontSize = ResponsiveHelper.getSubtitleFontSize(context);
 
-    return Stack(
-      children: [
-        Column(
+    return Scaffold(
+      backgroundColor: const Color(0xFF0B0B14),
+      body: SafeArea(
+        child: Column(
           children: [
-            // Header
+            // ── Header ──────────────────────────────────────────
             Padding(
-              padding: EdgeInsets.all(headerPadding),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Chats',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: titleFontSize,
-                        fontWeight: FontWeight.bold,
+              padding: EdgeInsets.symmetric(
+                horizontal: headerPadding,
+                vertical: headerPadding * 0.5,
+              ),
+              child: currentUser.when(
+                data: (me) => Row(
+                  children: [
+                    CircleAvatar(
+                      radius: avatarSize / 2,
+                      backgroundImage: NetworkImage(
+                        me?.profilePictureUrl ??
+                            'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
                       ),
-                      textAlign: TextAlign.center,
                     ),
-                  ),
-                  Container(
-                    width: avatarSize,
-                    height: avatarSize,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF374151),
-                      borderRadius: BorderRadius.circular(avatarSize / 2),
+                    Expanded(
+                      child: Text(
+                        'Chats',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: titleFontSize,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                    child: Icon(
-                      Icons.chat,
-                      color: Colors.white,
-                      size: avatarSize * 0.5,
+                    Container(
+                      width: avatarSize,
+                      height: avatarSize,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF1F2937),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.edit_outlined,
+                        color: Colors.white,
+                        size: avatarSize * 0.5,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                loading: () => const SizedBox(height: 40),
+                error: (_, __) => const SizedBox(height: 40),
               ),
             ),
 
-            // Search Bar
+            // ── Search bar ──────────────────────────────────────
             Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: searchHorizontalPadding,
@@ -111,7 +121,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
               child: Container(
                 height: searchHeight,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1F2937),
+                  color: const Color(0xFF1C1C28),
                   borderRadius: BorderRadius.circular(searchBorderRadius),
                 ),
                 child: Row(
@@ -152,7 +162,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             Expanded(
               child: currentUser.when(
@@ -163,65 +173,111 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                         data: (lastMessages) {
                           return getUnreadMessageCounts.when(
                             data: (unreadCounts) {
-                              // Get users with conversations, filtered by search query
                               final currentUserId = currentUserData?.id;
+
                               final conversationUsersList = conversationUsers
-                                  .where((user) {
-                                    return user.displayName
+                                  .where(
+                                    (user) => user.displayName
                                         .toLowerCase()
-                                        .contains(searchQuery.toLowerCase());
-                                  })
+                                        .contains(searchQuery.toLowerCase()),
+                                  )
                                   .toList();
 
-                              // If currentUserId is null, show empty state
+                              final onlineUsers = conversationUsers
+                                  .where((u) => u.isOnline == true)
+                                  .toList();
+
                               if (currentUserId == null) {
-                                return const SliverFillRemaining(
-                                  child: Center(
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.person_off,
-                                          size: 64,
+                                return const Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.person_off,
+                                        size: 64,
+                                        color: Colors.grey,
+                                      ),
+                                      SizedBox(height: 16),
+                                      Text(
+                                        'Please log in to view conversations',
+                                        style: TextStyle(
                                           color: Colors.grey,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w500,
                                         ),
-                                        SizedBox(height: 16),
-                                        Text(
-                                          'Please log in to view conversations',
-                                          style: TextStyle(
-                                            color: Colors.grey,
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
                                 );
                               }
 
                               return CustomScrollView(
                                 slivers: [
-                                  // Conversations Section
-                                  if (conversationUsersList.isNotEmpty) ...[
-                                    const SliverToBoxAdapter(
-                                      child: Padding(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 8,
-                                        ),
-                                        child: Text(
-                                          'CONVERSATIONS',
-                                          style: TextStyle(
-                                            color: Color(0xFF9CA3AF),
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            letterSpacing: 1.0,
+                                  // ── Online contacts row ───────
+                                  if (onlineUsers.isNotEmpty)
+                                    SliverToBoxAdapter(
+                                      child: SizedBox(
+                                        height: 92,
+                                        child: ListView.separated(
+                                          scrollDirection: Axis.horizontal,
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: headerPadding,
                                           ),
+                                          itemCount: onlineUsers.length,
+                                          separatorBuilder: (_, __) =>
+                                              const SizedBox(width: 16),
+                                          itemBuilder: (context, index) {
+                                            final user = onlineUsers[index];
+                                            return _OnlineContactItem(
+                                              user: user,
+                                              onTap: () async {
+                                                if (user.id == null) return;
+                                                final conversationId = await ref
+                                                    .read(
+                                                      createOrGetPrivateConversationProvider(
+                                                        user.id!,
+                                                      ).future,
+                                                    );
+                                                if (context.mounted) {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) => ChatScreen(
+                                                        senderId: currentUserId,
+                                                        otherUserName:
+                                                            user.displayName,
+                                                        otherUserAvatar:
+                                                            user.profilePictureUrl ??
+                                                            'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
+                                                        receiverId:
+                                                            user.id
+                                                                ?.toString() ??
+                                                            '',
+                                                        conversationId:
+                                                            conversationId,
+                                                        isOnline:
+                                                            user.isOnline ??
+                                                            false,
+                                                        lastSeenAt:
+                                                            user.lastSeenAt,
+                                                      ),
+                                                    ),
+                                                  );
+                                                }
+                                              },
+                                            );
+                                          },
                                         ),
                                       ),
                                     ),
+
+                                  if (onlineUsers.isNotEmpty)
+                                    const SliverToBoxAdapter(
+                                      child: SizedBox(height: 12),
+                                    ),
+
+                                  // ── Conversation list ─────────
+                                  if (conversationUsersList.isNotEmpty)
                                     SliverList(
                                       delegate: SliverChildBuilderDelegate((
                                         context,
@@ -247,13 +303,11 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                                           unreadCount: unreadCount,
                                           onTap: () async {
                                             if (user.id == null) return;
-
                                             final conversationId = await ref.read(
                                               createOrGetPrivateConversationProvider(
                                                 user.id!,
                                               ).future,
                                             );
-
                                             if (context.mounted) {
                                               Navigator.push(
                                                 context,
@@ -271,8 +325,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                                                     conversationId:
                                                         conversationId,
                                                     isOnline:
-                                                        user.isOnline ??
-                                                        false, // ← ADD
+                                                        user.isOnline ?? false,
                                                     lastSeenAt: user.lastSeenAt,
                                                   ),
                                                 ),
@@ -282,9 +335,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                                         );
                                       }, childCount: conversationUsersList.length),
                                     ),
-                                  ],
 
-                                  // Empty State
                                   if (conversationUsersList.isEmpty)
                                     const SliverFillRemaining(
                                       child: Center(
@@ -347,12 +398,81 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
             ),
           ],
         ),
-        // New Message Alert Overlay
-      ],
+      ),
     );
   }
 }
 
+// ============================================
+// ONLINE CONTACT ITEM (top horizontal row)
+// ============================================
+class _OnlineContactItem extends StatelessWidget {
+  final UserModel user;
+  final VoidCallback onTap;
+
+  const _OnlineContactItem({required this.user, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 64,
+        child: Column(
+          children: [
+            Stack(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white24, width: 1.5),
+                  ),
+                  child: ClipOval(
+                    child: Image.network(
+                      user.profilePictureUrl ??
+                          'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 2,
+                  bottom: 2,
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0xFF0B0B14),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              user.displayName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================
+// CONVERSATION TILE (plain row style)
+// ============================================
 class ConversationTile extends StatelessWidget {
   final UserModel user;
   final MessageModel? lastMessage;
@@ -372,8 +492,6 @@ class ConversationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasUnreadMessages = unreadCount > 0;
-
-    // Use ResponsiveHelper for responsive sizing
     final avatarSize = ResponsiveHelper.getAvatarSize(context);
     final horizontalPadding = ResponsiveHelper.getListTilePadding(context);
     final verticalPadding = ResponsiveHelper.getListTileVerticalPadding(
@@ -381,38 +499,23 @@ class ConversationTile extends StatelessWidget {
     );
     final fontSizeName = ResponsiveHelper.getTitleFontSize(context);
     final fontSizeMessage = ResponsiveHelper.getSubtitleFontSize(context);
-    final fontSizeTime = ResponsiveHelper.getCaptionFontSize(context);
 
     return InkWell(
       onTap: onTap,
-      child: Container(
+      child: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: horizontalPadding,
           vertical: verticalPadding,
         ),
-        margin: EdgeInsets.symmetric(
-          horizontal: ResponsiveHelper.isDesktop(context) ? 8.0 : 0,
-          vertical: 2.0,
-        ),
-        decoration: BoxDecoration(
-          color: hasUnreadMessages
-              ? const Color(0xFF1E3A5A)
-              : const Color(0xFF1E293B),
-          borderRadius: BorderRadius.circular(8),
-          border: hasUnreadMessages
-              ? Border.all(color: const Color(0xFF0D7FF2), width: 1)
-              : null,
-        ),
         child: Row(
           children: [
-            // Avatar with online indicator and unread badge
             Stack(
               children: [
                 Container(
                   width: avatarSize,
                   height: avatarSize,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(avatarSize / 2),
+                    shape: BoxShape.circle,
                     image: DecorationImage(
                       image: NetworkImage(
                         user.profilePictureUrl ??
@@ -422,217 +525,89 @@ class ConversationTile extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Online status indicator
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: user.isOnline == true
-                      ? Container(
-                          width: avatarSize * 0.285,
-                          height: avatarSize * 0.285,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF10B981),
-                            borderRadius: BorderRadius.circular(
-                              avatarSize * 0.143,
-                            ),
-                            border: Border.all(
-                              color: const Color(0xFF111827),
-                              width: 2,
-                            ),
-                          ),
-                        )
-                      : Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: avatarSize * 0.12,
-                            vertical: avatarSize * 0.04,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade800,
-                            borderRadius: BorderRadius.circular(
-                              avatarSize * 0.14,
-                            ),
-                            border: Border.all(
-                              color: const Color(0xFF111827),
-                              width: 2,
-                            ),
-                          ),
-                          child: Text(
-                            formatLastSeenShort(user.lastSeenAt),
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: avatarSize * 0.14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                ),
-                // Unread count badge
-                if (hasUnreadMessages)
+                if (user.isOnline == true)
                   Positioned(
                     right: 0,
-                    top: 0,
+                    bottom: 0,
                     child: Container(
-                      constraints: BoxConstraints(
-                        minWidth: avatarSize * 0.39,
-                        minHeight: avatarSize * 0.39,
-                      ),
+                      width: avatarSize * 0.28,
+                      height: avatarSize * 0.28,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF0D7FF2),
-                        borderRadius: BorderRadius.circular(avatarSize * 0.196),
+                        color: const Color(0xFF10B981),
+                        shape: BoxShape.circle,
                         border: Border.all(
-                          color: const Color(0xFF111827),
+                          color: const Color(0xFF0B0B14),
                           width: 2,
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          unreadCount > 99 ? '99+' : unreadCount.toString(),
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: avatarSize * 0.179,
-                            fontWeight: FontWeight.bold,
-                          ),
                         ),
                       ),
                     ),
                   ),
               ],
             ),
-
             SizedBox(width: ResponsiveHelper.isDesktop(context) ? 20 : 16),
-
-            // Chat info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          user.displayName,
-                          style: TextStyle(
-                            color: hasUnreadMessages
-                                ? Colors.white
-                                : const Color(0xFFD1D5DB),
-                            fontSize: fontSizeName,
-                            fontWeight: hasUnreadMessages
-                                ? FontWeight.w600
-                                : FontWeight.w500,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      // Message time
-                      if (lastMessage?.createdAt != null)
-                        Text(
-                          _formatMessageTime(lastMessage!.createdAt!),
-                          style: TextStyle(
-                            color: hasUnreadMessages
-                                ? const Color(0xFF0D7FF2)
-                                : const Color(0xFF9CA3AF),
-                            fontSize: fontSizeTime,
-                            fontWeight: hasUnreadMessages
-                                ? FontWeight.w500
-                                : FontWeight.normal,
-                          ),
-                        ),
-                    ],
+                  Text(
+                    user.displayName,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: fontSizeName,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  SizedBox(height: ResponsiveHelper.isDesktop(context) ? 6 : 4),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _getLastMessageText(),
-                          style: TextStyle(
-                            color: hasUnreadMessages
-                                ? Colors.white
-                                : const Color(0xFF9CA3AF),
-                            fontSize: fontSizeMessage,
-                            fontWeight: hasUnreadMessages
-                                ? FontWeight.w500
-                                : FontWeight.normal,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: ResponsiveHelper.isDesktop(context) ? 2 : 1,
-                        ),
-                      ),
-                      // Message status indicator
-                      if (lastMessage?.senderId == currentUserId)
-                        _buildMessageStatusIndicator(),
-                      if (user.isOnline != true && user.lastSeenAt != null) ...[
-                        const SizedBox(width: 8),
-                        Text(
-                          formatLastSeenShort(user.lastSeenAt),
-                          style: TextStyle(
-                            color: const Color(0xFF9CA3AF),
-                            fontSize: fontSizeTime,
-                            fontWeight: FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ],
+                  const SizedBox(height: 4),
+                  Text(
+                    _getLastMessageText(),
+                    style: TextStyle(
+                      color: const Color(0xFF9CA3AF),
+                      fontSize: fontSizeMessage,
+                      fontWeight: hasUnreadMessages
+                          ? FontWeight.w500
+                          : FontWeight.normal,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
                 ],
               ),
             ),
-
-            SizedBox(width: ResponsiveHelper.isDesktop(context) ? 12 : 8),
-
-            // Chat icon
-            // Container(
-            //   decoration: BoxDecoration(
-            //     color: const Color(0xFF1F2937),
-            //     borderRadius: BorderRadius.circular(20),
-            //   ),
-            //   child: const Icon(Icons.chat, color: Colors.white, size: 20),
-            // ),
+            const SizedBox(width: 8),
+            if (hasUnreadMessages)
+              Container(
+                width: 24,
+                height: 24,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF0D7FF2),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    unreadCount > 99 ? '99+' : unreadCount.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildMessageStatusIndicator() {
-    if (lastMessage == null) return const SizedBox.shrink();
-
-    return Icon(
-      Icons.done_all,
-      size: 16,
-      color: lastMessage!.readAt != null
-          ? const Color(0xFF0D7FF2)
-          : Colors.grey,
-    );
-  }
-
   String _getLastMessageText() {
     if (lastMessage == null) return 'No messages yet';
-
     if (lastMessage!.senderId == currentUserId) {
       if (lastMessage!.isEdited == true) {
         return 'You: ${lastMessage!.content ?? ''} (edited)';
       }
       return 'You: ${lastMessage!.content ?? ''}';
     }
-
     return lastMessage!.content ?? '';
-  }
-
-  String _formatMessageTime(DateTime messageTime) {
-    final now = DateTime.now().toUtc(); // ← add .toUtc()
-    final difference = now.difference(messageTime.toUtc()); // ← add .toUtc()
-
-    if (difference.inMinutes < 1) {
-      return 'now';
-    } else if (difference.inHours < 1) {
-      return '${difference.inMinutes}m';
-    } else if (difference.inDays < 1) {
-      return '${difference.inHours}h';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays}d';
-    } else {
-      return '${messageTime.day}/${messageTime.month}';
-    }
   }
 }

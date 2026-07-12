@@ -1,4 +1,4 @@
-import 'package:chat_apps/page/chat_home_page.dart';
+import 'package:chat_apps/page/home_page.dart';
 import 'package:chat_apps/page/login_page.dart';
 import 'package:chat_apps/provider/cache_provider.dart';
 import 'package:chat_apps/provider/supabase_provider.dart';

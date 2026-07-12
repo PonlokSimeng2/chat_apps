@@ -105,7 +105,22 @@ class Auth extends _$Auth {
       );
 
       if (result.user != null) {
-        // Update online status in your users table
+        // ✅ FIX: Check if user actually exists in your users table
+        final userRecord = await supabase.client
+            .from('users')
+            .select('id')
+            .eq('id', result.user!.id)
+            .maybeSingle(); // Returns null if not found, no exception
+
+        if (userRecord == null) {
+          // ✅ User exists in Supabase Auth but NOT in your database
+          // Sign them out immediately so session is not kept
+          await supabase.client.auth.signOut();
+          talker.warning('User not found in database: ${result.user!.id}');
+          return "Account not found. Please register first.";
+        }
+
+        // ✅ User exists in both Auth and database — proceed
         try {
           await supabase.client
               .from('users')
@@ -118,29 +133,38 @@ class Auth extends _$Auth {
           talker.info('Updated online status for user: ${result.user!.id}');
         } catch (updateError) {
           talker.error('Error updating online status', updateError);
-          log("Error updating online status: $updateError");
-          // Don't fail the login just because we couldn't update online status
+          // Don't fail login just because online status update failed
         }
 
         state = result.user!.id;
         _queueOneSignalSync(result.user!.id);
         talker.info('Sign in successful for user: ${result.user!.id}');
-        return null; // Success - moved inside the success condition
+        return null; // ✅ Success
       } else {
         talker.warning('Sign in failed: No user returned');
-        return "Login failed: No user returned";
+        return "Invalid email or password.";
       }
     } catch (e, st) {
       talker.error('Sign in error', e, st);
-      log("Error sign in: $e");
 
-      if (e.toString().contains('Invalid login credentials')) {
-        return "Invalid email or password. Please check your credentials.";
-      } else if (e.toString().contains('Email not confirmed')) {
-        return "Please confirm your email before signing in.";
-      } else {
-        return "Sign in failed. Please try again.";
+      // ✅ Make sure session is cleared on any error
+      try {
+        await ref.read(supabaseProvider).client.auth.signOut();
+      } catch (_) {}
+
+      if (e is AuthException) {
+        // ✅ FIX: Check AuthException directly instead of string matching
+        switch (e.statusCode) {
+          case '400':
+            return "Invalid email or password. Please check your credentials.";
+          case '422':
+            return "Please confirm your email before signing in.";
+          default:
+            return "Login failed: ${e.message}";
+        }
       }
+
+      return "Sign in failed. Please try again.";
     }
   }
 

@@ -1,5 +1,5 @@
 import 'package:chat_apps/main.dart';
-import 'package:chat_apps/page/chat_home_page.dart';
+import 'package:chat_apps/page/home_page.dart';
 import 'package:chat_apps/page/register_page.dart';
 import 'package:chat_apps/provider/auth_provider.dart';
 import 'package:chat_apps/provider/error_provider.dart';

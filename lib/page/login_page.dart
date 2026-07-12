@@ -1,4 +1,4 @@
-import 'package:chat_apps/page/chat_home_page.dart';
+import 'package:chat_apps/page/home_page.dart';
 import 'package:chat_apps/page/register_page.dart';
 import 'package:chat_apps/provider/auth_provider.dart';
 import 'package:chat_apps/provider/error_provider.dart';
@@ -19,16 +19,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   @override
   void initState() {
     super.initState();
     try {
       talker.info('Initializing LoginPage');
-      _loadSavedCredentials();
+      _loadSavedEmail(); // ✅ Only load email, NOT password
     } catch (e, st) {
       talker.error('Error initializing LoginPage', e, st);
-      // Add to visual error tracking
       ref
           .read(errorProvider.notifier)
           .addError(
@@ -39,60 +39,45 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
   }
 
-  Future<void> _loadSavedCredentials() async {
+  // ✅ FIX: Only restore email, never restore password
+  Future<void> _loadSavedEmail() async {
     try {
-      talker.info('Loading saved credentials');
       final prefs = await SharedPreferences.getInstance();
-      final savePassword = prefs.getString('password');
-      final saveEmail = prefs.getString('email');
-      if (saveEmail != null && savePassword != null) {
+      final savedEmail = prefs.getString('email');
+      if (savedEmail != null && savedEmail.isNotEmpty) {
         setState(() {
-          _emailController.text = saveEmail;
-          _passwordController.text = savePassword;
+          _emailController.text = savedEmail;
         });
-        talker.info('Loaded saved credentials for email: $saveEmail');
+        talker.info('Loaded saved email: $savedEmail');
       }
     } catch (e, st) {
-      talker.error('Error loading saved credentials', e, st);
-      // Add to visual error tracking
-      ref
-          .read(errorProvider.notifier)
-          .addError(
-            'Failed to load saved credentials',
-            details: e.toString(),
-            severity: ErrorSeverity.warning,
-          );
+      talker.error('Error loading saved email', e, st);
     }
   }
 
-  Future<void> _saveCredentials() async {
+  // ✅ FIX: Never save password in SharedPreferences
+  Future<void> _saveEmail() async {
     try {
-      talker.info('Saving credentials for user: ${_emailController.text}');
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('email', _emailController.text);
-      await prefs.setString('password', _passwordController.text);
+      await prefs.setString('email', _emailController.text.trim());
       await prefs.setBool('isLoggedIn', true);
-      talker.info('Credentials saved successfully');
+      // ❌ REMOVED: prefs.setString('password', ...) — never store plain text passwords
+      talker.info('Saved email successfully');
     } catch (e, st) {
-      talker.error('Error saving credentials', e, st);
+      talker.error('Error saving email', e, st);
     }
   }
 
   @override
   void dispose() {
-    try {
-      _emailController.dispose();
-      _passwordController.dispose();
-      super.dispose();
-    } catch (e, st) {
-      talker.error('Error disposing login page', e, st);
-    }
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   Future<void> _handleSubmit() async {
     try {
-      talker.info('Starting login submission');
-      // Validate form
+      // Validate form first
       final formState = _formKey.currentState;
       if (formState == null || !formState.validate()) {
         talker.warning('Form validation failed');
@@ -100,34 +85,32 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       }
 
       // Prevent multiple submissions
-      if (_isLoading) {
-        talker.warning('Multiple login attempts prevented');
-        return;
-      }
+      if (_isLoading) return;
 
-      setState(() {
-        _isLoading = true;
-      });
+      setState(() => _isLoading = true);
+
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
+
+      talker.info('Attempting login for: $email');
 
       final errorMessage = await ref
           .read(authProvider.notifier)
-          .signIn(
-            email: _emailController.text.trim(),
-            password: _passwordController.text.trim(),
-          );
+          .signIn(email: email, password: password);
 
       if (!mounted) return;
 
+      // ✅ FIX: Only navigate if errorMessage is explicitly null (success)
       if (errorMessage == null) {
-        await _saveCredentials();
+        await _saveEmail();
         if (!mounted) return;
-        // Navigate to home page only if login was successful
+
+        talker.info('Login successful, navigating to home');
+
         Navigator.of(context).pushReplacement(
-          // Use pushReplacement to prevent going back to login
           MaterialPageRoute(builder: (context) => const ChatHomePage()),
         );
 
-        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Login successful!'),
@@ -136,13 +119,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),
-            duration: const Duration(seconds: 4),
+            duration: const Duration(seconds: 3),
           ),
         );
       } else {
-        // Show error message from signIn method
-        talker.error('Login failedsssssssssss: $errorMessage');
-        // Add to visual error tracking
+        // ✅ FIX: Clear password field on failed login
+        _passwordController.clear();
+
+        talker.error('Login failed: $errorMessage');
+
         ref
             .read(errorProvider.notifier)
             .addError(
@@ -150,14 +135,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               details: errorMessage,
               severity: ErrorSeverity.error,
             );
+
+        if (!mounted) return;
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.error, color: Colors.white),
+                const Icon(Icons.error_outline, color: Colors.white),
                 const SizedBox(width: 12),
                 Expanded(child: Text(errorMessage)),
-                const Icon(Icons.lock_open, color: Colors.white70),
               ],
             ),
             backgroundColor: Colors.red.shade700,
@@ -176,7 +163,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       }
     } catch (e, st) {
       talker.error('Unexpected login error', e, st);
-      // Add to visual error tracking
+
       ref
           .read(errorProvider.notifier)
           .addError(
@@ -184,7 +171,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             details: e.toString(),
             severity: ErrorSeverity.critical,
           );
+
       if (mounted) {
+        // ✅ Also clear password on unexpected error
+        _passwordController.clear();
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -192,9 +183,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 const Icon(Icons.dangerous, color: Colors.white),
                 const SizedBox(width: 12),
                 const Expanded(
-                  child: Text('An unexpected error occurred during login'),
+                  child: Text(
+                    'An unexpected error occurred. Please try again.',
+                  ),
                 ),
-                const Icon(Icons.refresh, color: Colors.white70),
               ],
             ),
             backgroundColor: Colors.red.shade900,
@@ -202,7 +194,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),
-            duration: const Duration(seconds: 8),
+            duration: const Duration(seconds: 6),
             action: SnackBarAction(
               label: 'RETRY',
               textColor: Colors.white,
@@ -213,9 +205,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       }
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -235,7 +225,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         key: _formKey,
         child: Container(
           width: double.infinity,
-          height: double.infinity, // ← ADD THIS
+          height: double.infinity,
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
@@ -246,7 +236,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 30), // reduced from 50
+                const SizedBox(height: 30),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, top: 8.0),
                   child: Text(
@@ -269,7 +259,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 30), // reduced from 50
+                const SizedBox(height: 30),
                 Expanded(
                   child: ClipRRect(
                     borderRadius: const BorderRadius.only(
@@ -279,12 +269,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     child: Container(
                       color: Colors.white,
                       child: SingleChildScrollView(
-                        // ← KEY FIX
                         padding: const EdgeInsets.all(20.0),
                         keyboardDismissBehavior:
                             ScrollViewKeyboardDismissBehavior.onDrag,
                         child: Column(
-                          mainAxisSize: MainAxisSize.min, // ← KEY FIX
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             const SizedBox(height: 10),
                             Container(
@@ -303,6 +292,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  // Email field
                                   Container(
                                     padding: const EdgeInsets.all(10),
                                     decoration: BoxDecoration(
@@ -341,18 +331,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                           color: Colors.grey,
                                         ),
                                         border: InputBorder.none,
-                                      ),
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      border: Border(
-                                        bottom: BorderSide(
-                                          color: Colors.grey[200]!,
+                                        prefixIcon: Icon(
+                                          Icons.email_outlined,
+                                          color: Colors.grey,
                                         ),
                                       ),
                                     ),
+                                  ),
+                                  // ✅ Password field with show/hide toggle
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
                                     child: TextFormField(
                                       validator: (value) {
                                         if (value == null ||
@@ -365,25 +353,43 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                         return null;
                                       },
                                       controller: _passwordController,
-                                      obscureText: true,
+                                      obscureText: _obscurePassword,
                                       textInputAction: TextInputAction.done,
+                                      onFieldSubmitted: (_) =>
+                                          _isLoading ? null : _handleSubmit(),
                                       enabled: !_isLoading,
                                       style: const TextStyle(
                                         color: Colors.black,
                                       ),
-                                      decoration: const InputDecoration(
+                                      decoration: InputDecoration(
                                         hintText: 'Password',
-                                        hintStyle: TextStyle(
+                                        hintStyle: const TextStyle(
                                           color: Colors.grey,
                                         ),
                                         border: InputBorder.none,
+                                        prefixIcon: const Icon(
+                                          Icons.lock_outline,
+                                          color: Colors.grey,
+                                        ),
+                                        suffixIcon: IconButton(
+                                          icon: Icon(
+                                            _obscurePassword
+                                                ? Icons.visibility_off_outlined
+                                                : Icons.visibility_outlined,
+                                            color: Colors.grey,
+                                          ),
+                                          onPressed: () => setState(
+                                            () => _obscurePassword =
+                                                !_obscurePassword,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 30),
+                            const SizedBox(height: 20),
                             GestureDetector(
                               onTap: () {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -403,7 +409,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 30),
+                            const SizedBox(height: 20),
                             GestureDetector(
                               onTap: _isLoading ? null : _navigateToRegister,
                               child: Text(

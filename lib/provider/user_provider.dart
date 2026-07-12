@@ -9,7 +9,7 @@ part 'user_provider.g.dart';
 // Update user profile function for WidgetRef
 Future<void> updateUserProfileWidget(
   WidgetRef ref, {
-  String? displayName,
+  String? username,
   String? bio,
   String? phoneNumber,
   String? profilePictureUrl,
@@ -20,7 +20,7 @@ Future<void> updateUserProfileWidget(
   final supabase = ref.read(supabaseProvider);
 
   final updateData = <String, dynamic>{};
-  if (displayName != null) updateData['display_name'] = displayName;
+  if (username != null) updateData['username'] = username;
   if (bio != null) updateData['bio'] = bio;
   if (phoneNumber != null) updateData['phone_number'] = phoneNumber;
   if (profilePictureUrl != null)

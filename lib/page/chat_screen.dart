@@ -23,8 +23,8 @@ class ChatScreen extends ConsumerStatefulWidget {
   final String otherUserName;
   final String otherUserAvatar;
   final String receiverId;
-  final bool isOnline; // ← ADD
-  final DateTime? lastSeenAt; // ← ADD
+  final bool isOnline;
+  final DateTime? lastSeenAt;
 
   const ChatScreen({
     super.key,
@@ -33,7 +33,7 @@ class ChatScreen extends ConsumerStatefulWidget {
     required this.senderId,
     required this.otherUserName,
     required this.otherUserAvatar,
-    this.isOnline = false, // ← ADD
+    this.isOnline = false,
     this.lastSeenAt,
   });
 
@@ -242,16 +242,29 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  // String _formatLastSeen(DateTime? lastSeenAt) {
-  //   if (lastSeenAt == null) return 'Offline';
-  //   Duration diff = DateTime.now().toUtc().difference(lastSeenAt.toUtc());
-  //   if (diff.isNegative) diff = diff.abs();
-  //   if (diff.inMinutes < 1) return 'last seen just now';
-  //   if (diff.inHours < 1) return 'last seen ${diff.inMinutes}m ago';
-  //   if (diff.inDays < 1) return 'last seen ${diff.inHours}h ago';
-  //   if (diff.inDays < 7) return 'last seen ${diff.inDays}d ago';
-  //   return 'last seen ${lastSeenAt.toLocal().day}/${lastSeenAt.toLocal().month}';
-  // }
+  String _formatDateSeparator(DateTime dateUtc) {
+    final local = dateUtc.toLocal();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final messageDay = DateTime(local.year, local.month, local.day);
+    final diffDays = today.difference(messageDay).inDays;
+
+    final hour = local.hour;
+    final minute = local.minute.toString().padLeft(2, '0');
+    final period = hour >= 12 ? 'PM' : 'AM';
+    final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+    final time = '$displayHour:$minute $period';
+
+    if (diffDays == 0) return 'Today $time';
+    if (diffDays == 1) return 'Yesterday $time';
+    return '${local.day}/${local.month} $time';
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    final la = a.toLocal();
+    final lb = b.toLocal();
+    return la.year == lb.year && la.month == lb.month && la.day == lb.day;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -271,11 +284,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
+        centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Row(
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Stack(
               children: [
@@ -287,43 +302,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   right: 0,
                   bottom: 0,
                   child: OnlineStatusBadge(
-                    isOnline: widget.isOnline, // ← fixed: was `user.isOnline`
-                    lastSeenAt:
-                        widget.lastSeenAt, // ← fixed: was `user.lastSeenAt`
+                    isOnline: widget.isOnline,
+                    lastSeenAt: widget.lastSeenAt,
                     avatarSize: avatarSize,
                   ),
                 ),
               ],
             ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.otherUserName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  widget.isOnline
-                      ? 'Online'
-                      : formatLastSeenShort(widget.lastSeenAt),
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-              ],
+            const SizedBox(height: 4),
+            Text(
+              widget.otherUserName,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              widget.isOnline
+                  ? 'Online'
+                  : formatLastSeenShort(widget.lastSeenAt),
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
             ),
           ],
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.phone, color: Colors.white),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.videocam, color: Colors.white),
+            icon: const Icon(Icons.videocam_outlined, color: Colors.white),
             onPressed: () {},
           ),
         ],
@@ -401,22 +406,69 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 }
                 return ListView.builder(
                   controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final message = messages[index];
                     final isSentByMe = message.senderId == widget.senderId;
-                    return MessageBubble(
-                      key: ValueKey('msg_${message.uniqueId}'),
-                      message: message,
-                      isSentByMe: isSentByMe,
-                      senderId: widget.senderId,
-                      otherUserAvatar: widget.otherUserAvatar,
-                      conversationId: widget.conversationId,
-                      receiverId: widget.receiverId,
-                      onLongPress: () =>
-                          _showMessageOptions(context, message, isSentByMe),
-                      onReact: (emoji) => _handleEmojiReaction(emoji, message),
+                    final previous = index > 0 ? messages[index - 1] : null;
+
+                    final showDateSeparator =
+                        message.createdAt != null &&
+                        (previous?.createdAt == null ||
+                            !_isSameDay(
+                              previous!.createdAt!,
+                              message.createdAt!,
+                            ));
+
+                    final isFirstInGroup =
+                        previous == null ||
+                        previous.senderId != message.senderId ||
+                        showDateSeparator;
+
+                    return Column(
+                      children: [
+                        if (showDateSeparator && message.createdAt != null)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Center(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1C1C1E),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Text(
+                                  _formatDateSeparator(message.createdAt!),
+                                  style: TextStyle(
+                                    color: Colors.grey.shade400,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        MessageBubble(
+                          key: ValueKey('msg_${message.uniqueId}'),
+                          message: message,
+                          isSentByMe: isSentByMe,
+                          senderId: widget.senderId,
+                          otherUserAvatar: widget.otherUserAvatar,
+                          conversationId: widget.conversationId,
+                          receiverId: widget.receiverId,
+                          showAvatar: isFirstInGroup,
+                          onLongPress: () =>
+                              _showMessageOptions(context, message, isSentByMe),
+                          onReact: (emoji) =>
+                              _handleEmojiReaction(emoji, message),
+                        ),
+                      ],
                     );
                   },
                 );
@@ -438,59 +490,69 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Widget _buildMessageInput() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(color: Color(0xFF1C1C1E)),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: _isUploadingImage ? null : _showImageSourceSheet,
-            child: Container(
-              width: 40,
-              height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: const BoxDecoration(color: Colors.black),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: _isUploadingImage ? null : _showImageSourceSheet,
+              child: Icon(
+                Icons.add,
+                color: _isUploadingImage ? Colors.grey : Colors.white,
+                size: 26,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2C2C2E),
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        keyboardType: TextInputType.text,
+                        controller: _messageController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          hintText: 'Message...',
+                          hintStyle: TextStyle(color: Colors.grey),
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onSubmitted: (_) => _sendMessage(),
+                      ),
+                    ),
+                    const Icon(
+                      Icons.emoji_emotions_outlined,
+                      color: Colors.grey,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 12),
+                    const Icon(Icons.mic_none, color: Colors.grey, size: 22),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
               decoration: const BoxDecoration(
-                color: Color(0xFF2C2C2E),
+                color: Colors.blue,
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                Icons.image_outlined,
-                color: _isUploadingImage ? Colors.grey : Colors.white,
-                size: 20,
+              child: IconButton(
+                icon: const Icon(Icons.send, color: Colors.white, size: 20),
+                onPressed: _sendMessage,
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2C2C2E),
-                borderRadius: BorderRadius.circular(25),
-              ),
-              child: TextField(
-                keyboardType: TextInputType.text,
-                controller: _messageController,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  hintText: 'Type a message...',
-                  hintStyle: TextStyle(color: Colors.grey),
-                  border: InputBorder.none,
-                ),
-                onSubmitted: (_) => _sendMessage(),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            decoration: const BoxDecoration(
-              color: Colors.blue,
-              shape: BoxShape.circle,
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.send, color: Colors.white),
-              onPressed: _sendMessage,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -785,6 +847,7 @@ class MessageBubble extends ConsumerWidget {
   final String otherUserAvatar;
   final int conversationId;
   final String receiverId;
+  final bool showAvatar;
   final VoidCallback onLongPress;
   final void Function(String emoji) onReact;
 
@@ -798,6 +861,7 @@ class MessageBubble extends ConsumerWidget {
     required this.receiverId,
     required this.onLongPress,
     required this.onReact,
+    this.showAvatar = true,
   });
 
   @override
@@ -809,7 +873,7 @@ class MessageBubble extends ConsumerWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
+      padding: EdgeInsets.only(bottom: showAvatar ? 12 : 4),
       child: Row(
         mainAxisAlignment: isSentByMe
             ? MainAxisAlignment.end
@@ -817,9 +881,14 @@ class MessageBubble extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isSentByMe) ...[
-            CircleAvatar(
-              backgroundImage: NetworkImage(otherUserAvatar),
-              radius: 16,
+            SizedBox(
+              width: 32,
+              child: showAvatar
+                  ? CircleAvatar(
+                      backgroundImage: NetworkImage(otherUserAvatar),
+                      radius: 16,
+                    )
+                  : null,
             ),
             const SizedBox(width: 8),
           ],
@@ -857,8 +926,6 @@ class MessageBubble extends ConsumerWidget {
                               ),
                             ),
                     ),
-                    // ✅ Only show badge for confirmed messages (has real id)
-                    // not for temp messages to avoid duplicate channels
                     if (message.id != null && !message.isTemp)
                       Positioned(
                         bottom: -14,
@@ -867,44 +934,6 @@ class MessageBubble extends ConsumerWidget {
                         child: _EmojiStackBadge(
                           messageId: message.id!,
                           senderId: senderId,
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (isSentByMe) ...[
-                      _buildStatusIndicator(message, ref),
-                      const SizedBox(width: 8),
-                    ],
-                    if (!isSentByMe && message.isUnread) ...[
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF0D7FF2),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      const Text(
-                        'Unread',
-                        style: TextStyle(
-                          color: Color(0xFF0D7FF2),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    if (message.createdAt != null)
-                      Text(
-                        _formatTime(message.createdAt!),
-                        style: TextStyle(
-                          color: Colors.grey.shade400,
-                          fontSize: 11,
                         ),
                       ),
                   ],
@@ -927,94 +956,10 @@ class MessageBubble extends ConsumerWidget {
       case MessageStatus.delivered:
         return Colors.blue.shade700;
       case MessageStatus.read:
-        return Colors.blue.shade800;
+        return Colors.blue.shade600;
       case MessageStatus.failed:
         return Colors.red.shade400;
     }
-  }
-
-  Widget _buildStatusIndicator(MessageModel message, WidgetRef ref) {
-    switch (message.status) {
-      case MessageStatus.sending:
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            SizedBox(
-              width: 12,
-              height: 12,
-              child: CircularProgressIndicator(
-                strokeWidth: 1.5,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white70),
-              ),
-            ),
-            SizedBox(width: 4),
-            Text(
-              'Sending...',
-              style: TextStyle(color: Colors.white70, fontSize: 11),
-            ),
-          ],
-        );
-      case MessageStatus.sent:
-        return const Icon(Icons.done, size: 16, color: Colors.white70);
-      case MessageStatus.delivered:
-        return const Icon(Icons.done_all, size: 16, color: Colors.white70);
-      case MessageStatus.read:
-        return const Icon(Icons.done_all, size: 16, color: Color(0xFF0D7FF2));
-      case MessageStatus.failed:
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 16, color: Colors.red.shade200),
-            const SizedBox(width: 4),
-            Text(
-              'Failed',
-              style: TextStyle(color: Colors.red.shade200, fontSize: 11),
-            ),
-            const SizedBox(width: 4),
-            GestureDetector(
-              onTap: () {
-                if (message.id != null) {
-                  ref
-                      .read(messageProvider.notifier)
-                      .sendMessage(
-                        conversationId: conversationId,
-                        senderId: senderId,
-                        receiverId: receiverId,
-                        content: message.content ?? '',
-                      );
-                }
-              },
-              child: Text(
-                'Retry',
-                style: TextStyle(
-                  color: Colors.blue.shade200,
-                  fontSize: 11,
-                  decoration: TextDecoration.underline,
-                ),
-              ),
-            ),
-          ],
-        );
-    }
-  }
-
-  String _formatTime(DateTime messageTime) {
-    final now = DateTime.now().toUtc();
-    final msgUtc = messageTime.toUtc();
-    final difference = now.difference(msgUtc);
-
-    if (difference.inMinutes < 1) return 'now';
-    if (difference.inHours < 1) return '${difference.inMinutes}m ago';
-    if (difference.inDays < 1) {
-      // Show actual time like "10:30 PM"
-      final hour = msgUtc.toLocal().hour;
-      final minute = msgUtc.toLocal().minute.toString().padLeft(2, '0');
-      final period = hour >= 12 ? 'PM' : 'AM';
-      final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
-      return '$displayHour:$minute $period';
-    }
-    if (difference.inDays < 7) return '${difference.inDays}d ago';
-    return '${messageTime.toLocal().day}/${messageTime.toLocal().month}';
   }
 }
 
