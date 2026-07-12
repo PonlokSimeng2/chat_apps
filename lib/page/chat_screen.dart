@@ -270,7 +270,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final messagesState = ref.watch(messageProvider);
-    final avatarSize = ResponsiveHelper.getSmallAvatarSize(context);
+    ResponsiveHelper.getSmallAvatarSize(context);
     ref.listen<AsyncValue<List<MessageModel>>>(messageProvider, (_, next) {
       if (next is AsyncData) {
         final newCount = next.value?.length ?? 0;
