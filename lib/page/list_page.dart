@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:chat_apps/component/las_seen.dart';
 import 'package:chat_apps/page/chat_screen.dart';
 import 'package:chat_apps/provider/user_provider.dart';
 import 'package:chat_apps/provider/message_provider.dart';
@@ -461,6 +462,7 @@ class _OnlineContactItem extends StatelessWidget {
 // ============================================
 // CONVERSATION TILE (plain row style)
 // ============================================
+
 class ConversationTile extends StatelessWidget {
   final UserModel user;
   final MessageModel? lastMessage;
@@ -496,6 +498,7 @@ class ConversationTile extends StatelessWidget {
           vertical: verticalPadding,
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Stack(
               children: [
@@ -563,25 +566,46 @@ class ConversationTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            if (hasUnreadMessages)
-              Container(
-                width: 24,
-                height: 24,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF0D7FF2),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    unreadCount > 99 ? '99+' : unreadCount.toString(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
+            // ⬅️ new trailing column: status/time on top, unread badge below
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  user.isOnline == true
+                      ? 'Online'
+                      : formatLastSeenShort(user.lastSeenAt),
+                  style: TextStyle(
+                    color: user.isOnline == true
+                        ? const Color(0xFF10B981)
+                        : Colors.grey.shade500,
+                    fontSize: 12,
+                    fontWeight: user.isOnline == true
+                        ? FontWeight.w600
+                        : FontWeight.normal,
                   ),
                 ),
-              ),
+                const SizedBox(height: 6),
+                if (hasUnreadMessages)
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF0D7FF2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        unreadCount > 99 ? '99+' : unreadCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ],
         ),
       ),

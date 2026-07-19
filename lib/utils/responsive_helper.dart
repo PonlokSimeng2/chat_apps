@@ -22,8 +22,7 @@ class ResponsiveHelper {
       ResponsiveBreakpoints.of(context).smallerThan(TABLET);
 
   /// Screen size information
-  static Size screenSize(BuildContext context) =>
-      MediaQuery.of(context).size;
+  static Size screenSize(BuildContext context) => MediaQuery.of(context).size;
 
   static double screenWidth(BuildContext context) =>
       MediaQuery.of(context).size.width;
@@ -197,7 +196,8 @@ class ResponsiveHelper {
   }
 
   /// Responsive navigation
-  static bool shouldUseNavigationRail(BuildContext context) => isDesktop(context);
+  static bool shouldUseNavigationRail(BuildContext context) =>
+      isDesktop(context);
 
   static double getNavigationRailWidth(BuildContext context) {
     if (isDesktop(context)) return 300.0;
@@ -264,9 +264,11 @@ class ResponsiveHelper {
         vertical: 4,
         horizontal: ResponsiveHelper.getSmallPadding(context),
       ),
-      color: isMobile ? Colors.red.withValues(alpha: 0.3) :
-             isTablet ? Colors.orange.withValues(alpha: 0.3) :
-             Colors.transparent,
+      color: isMobile
+          ? Colors.red.withValues(alpha: 0.3)
+          : isTablet
+          ? Colors.orange.withValues(alpha: 0.3)
+          : Colors.transparent,
       child: Text(
         '$emoji $breakpointName MODE',
         style: TextStyle(
@@ -305,9 +307,12 @@ class ResponsiveHelper {
 
   /// Get responsive container constraints
   static BoxConstraints getResponsiveConstraints(BuildContext context) {
-    final screenWidth = ResponsiveHelper.screenWidth(context);
-    final maxWidth = isDesktop(context) ? 1200.0 :
-                   isTablet(context) ? 800.0 : double.infinity;
+    ResponsiveHelper.screenWidth(context);
+    final maxWidth = isDesktop(context)
+        ? 1200.0
+        : isTablet(context)
+        ? 800.0
+        : double.infinity;
 
     return BoxConstraints(
       maxWidth: maxWidth,
