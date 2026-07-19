@@ -177,7 +177,6 @@ class ContactsScreen extends ConsumerWidget {
                             );
                           },
                         );
-                        ;
                       },
                     );
                   },

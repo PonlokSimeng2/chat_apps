@@ -47,7 +47,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _imagePicker = ImagePicker();
   bool _isUploadingImage = false;
-  bool _hasScrolledToBottom = false;
   int _previousMessageCount = 0;
   int? _conversationId;
 
