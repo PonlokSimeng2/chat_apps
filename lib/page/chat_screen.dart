@@ -19,7 +19,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../main.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
-  final int conversationId;
+  final Future<int> conversationIdFuture;
   final String senderId;
   final String otherUserName;
   final String otherUserAvatar;
@@ -29,7 +29,7 @@ class ChatScreen extends ConsumerStatefulWidget {
 
   const ChatScreen({
     super.key,
-    required this.conversationId,
+    required this.conversationIdFuture,
     required this.receiverId,
     required this.senderId,
     required this.otherUserName,
@@ -49,29 +49,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool _isUploadingImage = false;
   bool _hasScrolledToBottom = false;
   int _previousMessageCount = 0;
+  int? _conversationId;
 
   @override
   void initState() {
     super.initState();
-    try {
-      talker.info(
-        'Initializing ChatScreen for conversation: ${widget.conversationId}',
-      );
-      Future.microtask(
-        () => ref
-            .read(messageProvider.notifier)
-            .loadMessages(widget.conversationId, widget.receiverId),
-      );
-    } catch (e, st) {
-      talker.error('Error initializing ChatScreen', e, st);
-      ref
-          .read(errorProvider.notifier)
-          .addError(
-            'Failed to load chat messages',
-            details: e.toString(),
-            severity: ErrorSeverity.error,
-          );
-    }
+    widget.conversationIdFuture.then((conversationId) {
+      if (!mounted) return;
+      setState(() => _conversationId = conversationId);
+      try {
+        talker.info(
+          'Initializing ChatScreen for conversation: $conversationId',
+        );
+        Future.microtask(
+          () => ref
+              .read(messageProvider.notifier)
+              .loadMessages(conversationId, widget.receiverId),
+        );
+      } catch (e, st) {
+        talker.error('Error initializing ChatScreen', e, st);
+        ref
+            .read(errorProvider.notifier)
+            .addError(
+              'Failed to load chat messages',
+              details: e.toString(),
+              severity: ErrorSeverity.error,
+            );
+      }
+    });
   }
 
   @override
@@ -83,22 +88,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void _scrollToBottom({bool immediate = false}) {
     if (!mounted) return;
-    void doScroll() {
-      if (!mounted) return;
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: immediate
-              ? Duration.zero
-              : const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    }
+    if (!_scrollController.hasClients) return;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => doScroll());
-    });
+    if (immediate) {
+      _scrollController.jumpTo(0);
+    } else {
+      _scrollController.animateTo(
+        0, // ⬅️ 0 = bottom/newest in reverse mode
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   Future<void> _pickAndSendImage(ImageSource source) async {
@@ -115,7 +115,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       await ref
           .read(messageProvider.notifier)
           .sendImageMessage(
-            conversationId: widget.conversationId,
+            conversationId: _conversationId!,
             senderId: widget.senderId,
             receiverId: widget.receiverId,
             imageFile: File(picked.path),
@@ -192,11 +192,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ref
           .read(messageProvider.notifier)
           .sendMessage(
-            conversationId: widget.conversationId,
+            conversationId: _conversationId!,
             senderId: widget.senderId,
             receiverId: widget.receiverId,
             content: _messageController.text.trim(),
           );
+
       _messageController.clear();
       _scrollToBottom();
     } catch (e, st) {
@@ -269,6 +270,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_conversationId == null) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final messagesState = ref.watch(messageProvider);
     ResponsiveHelper.getSmallAvatarSize(context);
     ref.listen<AsyncValue<List<MessageModel>>>(messageProvider, (_, next) {
@@ -431,10 +439,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           Expanded(
             child: messagesState.when(
               data: (messages) {
-                if (!_hasScrolledToBottom && messages.isNotEmpty) {
-                  _hasScrolledToBottom = true;
-                  _previousMessageCount = messages.length;
-                  _scrollToBottom();
+                if (messages.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'No messages yet. Start the conversation!',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  );
                 }
                 if (messages.isEmpty) {
                   return const Center(
@@ -446,15 +457,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 }
                 return ListView.builder(
                   controller: _scrollController,
+                  reverse:
+                      true, // ⬅️ must be paired with reversed indexing below
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 16,
                   ),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
-                    final message = messages[index];
+                    // With reverse: true, index 0 = newest message (rendered at bottom)
+                    final reversedIndex = messages.length - 1 - index;
+                    final message = messages[reversedIndex];
                     final isSentByMe = message.senderId == widget.senderId;
-                    final previous = index > 0 ? messages[index - 1] : null;
+                    final previous = reversedIndex > 0
+                        ? messages[reversedIndex - 1]
+                        : null;
 
                     final showDateSeparator =
                         message.createdAt != null &&
@@ -500,7 +517,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           isSentByMe: isSentByMe,
                           senderId: widget.senderId,
                           otherUserAvatar: widget.otherUserAvatar,
-                          conversationId: widget.conversationId,
+                          conversationId: _conversationId!,
                           receiverId: widget.receiverId,
                           showAvatar: isFirstInGroup,
                           onLongPress: () =>

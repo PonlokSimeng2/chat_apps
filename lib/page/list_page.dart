@@ -230,40 +230,35 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                                             final user = onlineUsers[index];
                                             return _OnlineContactItem(
                                               user: user,
-                                              onTap: () async {
+                                              onTap: () {
                                                 if (user.id == null) return;
-                                                final conversationId = await ref
-                                                    .read(
-                                                      createOrGetPrivateConversationProvider(
-                                                        user.id!,
-                                                      ).future,
-                                                    );
-                                                if (context.mounted) {
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (context) => ChatScreen(
-                                                        senderId: currentUserId,
-                                                        otherUserName:
-                                                            user.displayName,
-                                                        otherUserAvatar:
-                                                            user.profilePictureUrl ??
-                                                            'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
-                                                        receiverId:
-                                                            user.id
-                                                                ?.toString() ??
-                                                            '',
-                                                        conversationId:
-                                                            conversationId,
-                                                        isOnline:
-                                                            user.isOnline ??
-                                                            false,
-                                                        lastSeenAt:
-                                                            user.lastSeenAt,
-                                                      ),
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => ChatScreen(
+                                                      senderId: currentUserId,
+                                                      otherUserName:
+                                                          user.displayName,
+                                                      otherUserAvatar:
+                                                          user.profilePictureUrl ??
+                                                          '...',
+                                                      receiverId:
+                                                          user.id?.toString() ??
+                                                          '',
+                                                      conversationIdFuture: ref
+                                                          .read(
+                                                            createOrGetPrivateConversationProvider(
+                                                              user.id!,
+                                                            ).future,
+                                                          ),
+                                                      isOnline:
+                                                          user.isOnline ??
+                                                          false,
+                                                      lastSeenAt:
+                                                          user.lastSeenAt,
                                                     ),
-                                                  );
-                                                }
+                                                  ),
+                                                );
                                               },
                                             );
                                           },
@@ -301,41 +296,35 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                                           lastMessage: lastMessage,
                                           currentUserId: currentUserId,
                                           unreadCount: unreadCount,
-                                          onTap: () async {
+                                          onTap: () {
                                             if (user.id == null) return;
-                                            final conversationId = await ref.read(
-                                              createOrGetPrivateConversationProvider(
-                                                user.id!,
-                                              ).future,
-                                            );
-                                            if (context.mounted) {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) => ChatScreen(
-                                                    senderId: currentUserId,
-                                                    otherUserName:
-                                                        user.displayName,
-                                                    otherUserAvatar:
-                                                        user.profilePictureUrl ??
-                                                        'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
-                                                    receiverId:
-                                                        user.id?.toString() ??
-                                                        '',
-                                                    conversationId:
-                                                        conversationId,
-                                                    isOnline:
-                                                        user.isOnline ?? false,
-                                                    lastSeenAt: user.lastSeenAt,
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => ChatScreen(
+                                                  senderId: currentUserId,
+                                                  otherUserName:
+                                                      user.displayName,
+                                                  otherUserAvatar:
+                                                      user.profilePictureUrl ??
+                                                      'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
+                                                  receiverId:
+                                                      user.id?.toString() ?? '',
+                                                  conversationIdFuture: ref.read(
+                                                    createOrGetPrivateConversationProvider(
+                                                      user.id!,
+                                                    ).future,
                                                   ),
+                                                  isOnline:
+                                                      user.isOnline ?? false,
+                                                  lastSeenAt: user.lastSeenAt,
                                                 ),
-                                              );
-                                            }
+                                              ),
+                                            );
                                           },
                                         );
                                       }, childCount: conversationUsersList.length),
                                     ),
-
                                   if (conversationUsersList.isEmpty)
                                     const SliverFillRemaining(
                                       child: Center(

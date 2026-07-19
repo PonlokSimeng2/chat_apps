@@ -152,34 +152,32 @@ class ContactsScreen extends ConsumerWidget {
                         return ContactTile(
                           user: user,
                           currentUserId: currentUserData?.id?.toString() ?? '',
-                          onTap: () async {
-                            final conversationId = await ref.read(
-                              createOrGetPrivateConversationProvider(
-                                user.id!,
-                              ).future,
-                            );
-
-                            if (context.mounted) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ChatScreen(
-                                    senderId:
-                                        currentUserData?.id?.toString() ?? '',
-                                    otherUserName: user.displayName,
-                                    otherUserAvatar:
-                                        user.profilePictureUrl ??
-                                        'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
-                                    receiverId: user.id?.toString() ?? '',
-                                    conversationId: conversationId,
-                                    isOnline: user.isOnline ?? false,
-                                    lastSeenAt: user.lastSeenAt,
+                          onTap: () {
+                            if (user.id == null) return;
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ChatScreen(
+                                  senderId:
+                                      currentUserData?.id?.toString() ?? '',
+                                  otherUserName: user.displayName,
+                                  otherUserAvatar:
+                                      user.profilePictureUrl ??
+                                      'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
+                                  receiverId: user.id?.toString() ?? '',
+                                  conversationIdFuture: ref.read(
+                                    createOrGetPrivateConversationProvider(
+                                      user.id!,
+                                    ).future,
                                   ),
+                                  isOnline: user.isOnline ?? false,
+                                  lastSeenAt: user.lastSeenAt,
                                 ),
-                              );
-                            }
+                              ),
+                            );
                           },
                         );
+                        ;
                       },
                     );
                   },

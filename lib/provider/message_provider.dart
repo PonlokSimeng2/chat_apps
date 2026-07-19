@@ -23,7 +23,7 @@ String _getConversationKey(
 class MessageNotifier extends _$MessageNotifier {
   final SupabaseClient _client = Supabase.instance.client;
   RealtimeChannel? _channel;
-
+  int? _currentConversationId;
   @override
   AsyncValue<List<MessageModel>> build() {
     ref.onDispose(() {
@@ -181,10 +181,24 @@ class MessageNotifier extends _$MessageNotifier {
   }
 
   Future<void> loadMessages(int conversationId, String receiverId) async {
+    // Skip full reload if we're already on this conversation and subscribed
+    if (_currentConversationId == conversationId &&
+        _channel != null &&
+        state.hasValue) {
+      talker.info(
+        'Already loaded conversation $conversationId, skipping reload',
+      );
+      return;
+    }
+
+    _currentConversationId = conversationId;
     state = const AsyncValue.loading();
 
     try {
       talker.info('Loading messages for conversation $conversationId');
+
+      // ⬅️ Fire the realtime subscription immediately, don't wait for the fetch
+      _setupRealtimeSubscription(conversationId, receiverId);
 
       final response = await _client
           .from('messages')
@@ -201,8 +215,6 @@ class MessageNotifier extends _$MessageNotifier {
         'Loaded ${messages.length} messages for conversation $conversationId',
       );
       state = AsyncValue.data(messages);
-
-      _setupRealtimeSubscription(conversationId, receiverId);
     } catch (e, stack) {
       talker.error(
         'Error loading messages for conversation $conversationId',
@@ -660,18 +672,13 @@ Stream<List<UserModel>> conversationUsers(Ref ref) async* {
   }
 
   final controller = StreamController<List<UserModel>>();
-  Timer? refreshTimer;
 
   Future<void> fetchAndEmit() async {
     try {
       final users = await _fetchConversationUsers(supabase, currentUserId);
-      if (!controller.isClosed) {
-        controller.add(users);
-      }
+      if (!controller.isClosed) controller.add(users);
     } catch (_) {
-      if (!controller.isClosed) {
-        controller.add([]);
-      }
+      if (!controller.isClosed) controller.add([]);
     }
   }
 
@@ -683,23 +690,39 @@ Stream<List<UserModel>> conversationUsers(Ref ref) async* {
         event: PostgresChangeEvent.all,
         schema: 'public',
         table: 'users',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'id',
+          value: currentUserId,
+        ),
         callback: (_) => fetchAndEmit(),
       )
       .onPostgresChanges(
         event: PostgresChangeEvent.all,
         schema: 'public',
         table: 'messages',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'sender_id',
+          value: currentUserId,
+        ),
+        callback: (_) => fetchAndEmit(),
+      )
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'messages',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'receiver_id',
+          value: currentUserId,
+        ),
         callback: (_) => fetchAndEmit(),
       )
       .subscribe();
 
-  refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-    fetchAndEmit();
-  });
-
   ref.onDispose(() {
     supabase.removeChannel(channel);
-    refreshTimer?.cancel();
     controller.close();
   });
 
@@ -719,20 +742,85 @@ Stream<Map<String, MessageModel>> getLastMessages(Ref ref) async* {
 
   final streamController = StreamController<Map<String, MessageModel>>();
 
-  yield await _fetchLastMessages(supabase, currentUserId);
+  // Initial load — only run once, on first entry into the chat list
+  final Map<String, MessageModel> lastMessages = await _fetchLastMessages(
+    supabase,
+    currentUserId,
+  );
+  yield lastMessages;
+
+  void applyMessage(Map<String, dynamic> data) {
+    if (data.isEmpty) return;
+    try {
+      final message = MessageModel.fromJson(data);
+      final key = _getConversationKey(
+        currentUserId,
+        message.senderId,
+        message.receiverId,
+      );
+
+      final existing = lastMessages[key];
+      // Only replace if this message is newer than what we're showing,
+      // so out-of-order events can't overwrite a newer one.
+      if (existing == null ||
+          existing.createdAt == null ||
+          message.createdAt == null ||
+          message.createdAt!.isAfter(existing.createdAt!)) {
+        lastMessages[key] = message;
+        if (!streamController.isClosed) {
+          streamController.add(Map<String, MessageModel>.from(lastMessages));
+        }
+      }
+    } catch (e) {
+      talker.error('Error applying realtime message to last-message map', e);
+    }
+  }
 
   final channel = supabase
       .channel('last_messages_$currentUserId')
       .onPostgresChanges(
-        event: PostgresChangeEvent.all,
+        event: PostgresChangeEvent.insert,
         schema: 'public',
         table: 'messages',
-        callback: (payload) async {
-          final newMessages = await _fetchLastMessages(supabase, currentUserId);
-          if (!streamController.isClosed) {
-            streamController.add(newMessages);
-          }
-        },
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'sender_id',
+          value: currentUserId,
+        ),
+        callback: (payload) => applyMessage(payload.newRecord),
+      )
+      .onPostgresChanges(
+        event: PostgresChangeEvent.insert,
+        schema: 'public',
+        table: 'messages',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'receiver_id',
+          value: currentUserId,
+        ),
+        callback: (payload) => applyMessage(payload.newRecord),
+      )
+      .onPostgresChanges(
+        event: PostgresChangeEvent.update,
+        schema: 'public',
+        table: 'messages',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'sender_id',
+          value: currentUserId,
+        ),
+        callback: (payload) => applyMessage(payload.newRecord),
+      )
+      .onPostgresChanges(
+        event: PostgresChangeEvent.update,
+        schema: 'public',
+        table: 'messages',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'receiver_id',
+          value: currentUserId,
+        ),
+        callback: (payload) => applyMessage(payload.newRecord),
       )
       .subscribe();
 
@@ -759,18 +847,25 @@ Stream<Map<String, int>> getUnreadMessageCounts(Ref ref) async* {
 
   yield await _fetchUnreadCounts(supabase, currentUserId);
 
+  Future<void> refresh() async {
+    final newCounts = await _fetchUnreadCounts(supabase, currentUserId);
+    if (!streamController.isClosed) {
+      streamController.add(newCounts);
+    }
+  }
+
   final channel = supabase
       .channel('unread_counts_$currentUserId')
       .onPostgresChanges(
         event: PostgresChangeEvent.all,
         schema: 'public',
         table: 'messages',
-        callback: (payload) async {
-          final newCounts = await _fetchUnreadCounts(supabase, currentUserId);
-          if (!streamController.isClosed) {
-            streamController.add(newCounts);
-          }
-        },
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'receiver_id',
+          value: currentUserId,
+        ),
+        callback: (_) => refresh(),
       )
       .subscribe();
 
@@ -792,30 +887,20 @@ Future<Map<String, MessageModel>> _fetchLastMessages(
   String currentUserId,
 ) async {
   try {
-    final response = await supabase
-        .from('messages')
-        .select('*')
-        .or('sender_id.eq.$currentUserId,receiver_id.eq.$currentUserId')
-        .neq('is_deleted', true)
-        .order('created_at', ascending: false);
-
+    final response = await supabase.rpc(
+      'get_last_messages_per_conversation',
+      params: {'p_user_id': currentUserId},
+    );
     final Map<String, MessageModel> lastMessages = {};
-    final Set<String> processedConversations = {};
-
-    for (final messageData in response as List) {
-      final message = MessageModel.fromJson(messageData);
-      final conversationKey = _getConversationKey(
+    for (final row in response as List) {
+      final message = MessageModel.fromJson(row);
+      final key = _getConversationKey(
         currentUserId,
         message.senderId,
         message.receiverId,
       );
-
-      if (!processedConversations.contains(conversationKey)) {
-        lastMessages[conversationKey] = message;
-        processedConversations.add(conversationKey);
-      }
+      lastMessages[key] = message;
     }
-
     return lastMessages;
   } catch (e) {
     talker.error('Error fetching last messages', e);

@@ -43,7 +43,7 @@ final class MessageNotifierProvider
   }
 }
 
-String _$messageNotifierHash() => r'81b3a2732ae579574169cee08b0fe299cfc40dab';
+String _$messageNotifierHash() => r'91a5154e30ea08de8039b64997b1d27bdd22d758';
 
 abstract class _$MessageNotifier
     extends $Notifier<AsyncValue<List<MessageModel>>> {
@@ -173,7 +173,7 @@ final class ConversationUsersProvider
   }
 }
 
-String _$conversationUsersHash() => r'43c162f2899b1f5a6563f8df421dab5a9350061d';
+String _$conversationUsersHash() => r'3bbfd6fe8dcbf42378c5899e382608936696069e';
 
 @ProviderFor(getLastMessages)
 final getLastMessagesProvider = GetLastMessagesProvider._();
@@ -214,7 +214,7 @@ final class GetLastMessagesProvider
   }
 }
 
-String _$getLastMessagesHash() => r'c6437bf914933ae0599e7140da55f0ccff3d73da';
+String _$getLastMessagesHash() => r'bcfc88106dd05dad911fde82d7876c52fad27d65';
 
 @ProviderFor(getUnreadMessageCounts)
 final getUnreadMessageCountsProvider = GetUnreadMessageCountsProvider._();
@@ -254,4 +254,4 @@ final class GetUnreadMessageCountsProvider
 }
 
 String _$getUnreadMessageCountsHash() =>
-    r'b892b32a6fc4c6718c0b00f5121ac15eea3e38c6';
+    r'682666b5dc95fbe28dfbf00ae20a72aab1380b6d';
