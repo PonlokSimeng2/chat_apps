@@ -24,7 +24,6 @@ class Auth extends _$Auth {
     required String email,
     required String password,
     required String username,
-    required String displayName,
   }) async {
     try {
       talker.info('Starting signup process for email: $email');
@@ -57,7 +56,6 @@ class Auth extends _$Auth {
           'id': userId,
           'username': username,
           'email': email,
-          'display_name': displayName,
           'phone_number': '', // Add default phone if your table requires it
           'is_online': true,
           'status': 'active',
@@ -248,7 +246,7 @@ class Auth extends _$Auth {
 
   // Update user profile
   Future<String?> updateProfile({
-    String? displayName,
+    String? userName,
     String? bio,
     String? phoneNumber,
     String? profilePictureUrl,
@@ -263,7 +261,7 @@ class Auth extends _$Auth {
         'updated_at': DateTime.now().toIso8601String(),
       };
 
-      if (displayName != null) updates['display_name'] = displayName;
+      if (userName != null) updates['username'] = userName;
       if (bio != null) updates['bio'] = bio;
       if (phoneNumber != null) updates['phone_number'] = phoneNumber;
       if (profilePictureUrl != null)

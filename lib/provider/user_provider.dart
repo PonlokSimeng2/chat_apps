@@ -157,7 +157,7 @@ Future<int> createOrGetPrivateConversation(Ref ref, String otherUserId) async {
 // Update user profile function
 Future<void> updateUserProfile(
   Ref ref, {
-  String? displayName,
+  String? userName,
   String? bio,
   String? phoneNumber,
   String? profilePictureUrl,
@@ -168,7 +168,7 @@ Future<void> updateUserProfile(
   final supabase = ref.read(supabaseProvider);
 
   final updateData = <String, dynamic>{};
-  if (displayName != null) updateData['display_name'] = displayName;
+  if (userName != null) updateData['username'] = userName;
   if (bio != null) updateData['bio'] = bio;
   if (phoneNumber != null) updateData['phone_number'] = phoneNumber;
   if (profilePictureUrl != null)

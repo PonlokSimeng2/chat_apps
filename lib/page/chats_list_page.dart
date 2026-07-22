@@ -22,7 +22,8 @@ String _getConversationKey(
 }
 
 class ChatListScreen extends ConsumerStatefulWidget {
-  const ChatListScreen({super.key});
+  // ignore: non_constant_identifier_names
+  const ChatListScreen.ChatsListPage({super.key});
 
   @override
   ConsumerState<ChatListScreen> createState() => _ChatListScreenState();
@@ -177,7 +178,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
 
                               final conversationUsersList = conversationUsers
                                   .where(
-                                    (user) => user.displayName
+                                    (user) => user.username
                                         .toLowerCase()
                                         .contains(searchQuery.toLowerCase()),
                                   )
@@ -238,7 +239,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                                                     builder: (context) => ChatScreen(
                                                       senderId: currentUserId,
                                                       otherUserName:
-                                                          user.displayName,
+                                                          user.username,
                                                       otherUserAvatar:
                                                           user.profilePictureUrl ??
                                                           '...',
@@ -303,8 +304,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                                               MaterialPageRoute(
                                                 builder: (context) => ChatScreen(
                                                   senderId: currentUserId,
-                                                  otherUserName:
-                                                      user.displayName,
+                                                  otherUserName: user.username,
                                                   otherUserAvatar:
                                                       user.profilePictureUrl ??
                                                       'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
@@ -447,7 +447,7 @@ class _OnlineContactItem extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              user.displayName,
+              user.username,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(color: Colors.white70, fontSize: 12),
@@ -541,7 +541,7 @@ class ConversationTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    user.displayName,
+                    user.username,
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: fontSizeName,

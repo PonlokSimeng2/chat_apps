@@ -172,7 +172,7 @@ class _ChatTileWithHelper extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          user.displayName,
+                          user.username,
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: ResponsiveHelper.getTitleFontSize(

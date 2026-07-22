@@ -2,7 +2,6 @@ class UserModel {
   final String? id; // Changed from int? to String?
   final String username;
   final String email;
-  final String displayName;
   final String? profilePictureUrl;
   final String? phoneNumber;
   final String? bio;
@@ -17,7 +16,6 @@ class UserModel {
     this.id,
     required this.username,
     required this.email,
-    required this.displayName,
     this.profilePictureUrl,
     this.phoneNumber,
     this.bio,
@@ -34,7 +32,6 @@ class UserModel {
       id: json['id']?.toString(), // Simplified - just convert to string
       username: json['username'].toString(),
       email: json['email'].toString(),
-      displayName: json['display_name'].toString(),
       profilePictureUrl: json['profile_picture_url']?.toString(),
       phoneNumber: json['phone_number']?.toString(),
       bio: json['bio']?.toString(),
@@ -62,7 +59,6 @@ class UserModel {
       'id': id,
       'username': username,
       'email': email,
-      'display_name': displayName,
       'profile_picture_url': profilePictureUrl,
       'phone_number': phoneNumber,
       'bio': bio,

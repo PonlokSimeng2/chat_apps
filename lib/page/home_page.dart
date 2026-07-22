@@ -1,5 +1,5 @@
 import 'package:chat_apps/page/contact_page.dart';
-import 'package:chat_apps/page/list_page.dart';
+import 'package:chat_apps/page/chats_list_page.dart';
 import 'package:chat_apps/page/profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -80,7 +80,7 @@ class ChatHomeScreen extends ConsumerWidget {
                 child: IndexedStack(
                   index: selectedTab,
                   children: const [
-                    ChatListScreen(),
+                    ChatListScreen.ChatsListPage(),
                     ContactsScreen(),
                     ProfilePage(),
                   ],
@@ -104,7 +104,7 @@ class ChatHomeScreen extends ConsumerWidget {
               child: IndexedStack(
                 index: selectedTab,
                 children: const [
-                  ChatListScreen(),
+                  ChatListScreen.ChatsListPage(),
                   ContactsScreen(),
                   ProfilePage(),
                 ],

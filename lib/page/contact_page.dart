@@ -108,7 +108,7 @@ class ContactsScreen extends ConsumerWidget {
                       if (currentUserId != null && user.id == currentUserId) {
                         return false;
                       }
-                      return user.displayName.toLowerCase().contains(
+                      return user.username.toLowerCase().contains(
                         searchQuery.toLowerCase(),
                       );
                     }).toList();
@@ -160,7 +160,7 @@ class ContactsScreen extends ConsumerWidget {
                                 builder: (context) => ChatScreen(
                                   senderId:
                                       currentUserData?.id?.toString() ?? '',
-                                  otherUserName: user.displayName,
+                                  otherUserName: user.username,
                                   otherUserAvatar:
                                       user.profilePictureUrl ??
                                       'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png',
@@ -243,7 +243,7 @@ class ContactTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    user.displayName,
+                    user.username,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 17,

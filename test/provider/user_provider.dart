@@ -9,7 +9,7 @@ part 'user_provider.g.dart';
 // Update user profile function for WidgetRef
 Future<void> updateUserProfileWidget(
   WidgetRef ref, {
-  String? displayName,
+  String? userName,
   String? bio,
   String? website,
   String? phoneNumber,
@@ -21,7 +21,7 @@ Future<void> updateUserProfileWidget(
   final supabase = ref.read(supabaseProvider);
 
   final updateData = <String, dynamic>{};
-  if (displayName != null) updateData['display_name'] = displayName;
+  if (userName != null) updateData['display_name'] = userName;
   if (bio != null) updateData['bio'] = bio;
   if (website != null) updateData['website'] = website;
   if (phoneNumber != null) updateData['phone_number'] = phoneNumber;
@@ -112,7 +112,9 @@ Future<int> createOrGetPrivateConversation(Ref ref, String otherUserId) async {
   final currentUserId = ref.watch(authProvider);
   if (currentUserId == null) throw Exception('User not authenticated');
 
-  print('🔐 Creating private conversation between $currentUserId and $otherUserId');
+  print(
+    '🔐 Creating private conversation between $currentUserId and $otherUserId',
+  );
 
   // Since conversation_participants table doesn't exist, create a unique conversation per user pair
   // Using a hash of user IDs to ensure uniqueness
@@ -127,7 +129,9 @@ Future<int> createOrGetPrivateConversation(Ref ref, String otherUserId) async {
       .maybeSingle();
 
   if (existingConversation != null) {
-    print('✅ Found existing conversation with ID: ${existingConversation['id']}');
+    print(
+      '✅ Found existing conversation with ID: ${existingConversation['id']}',
+    );
     return existingConversation['id'] as int;
   }
 
@@ -136,7 +140,8 @@ Future<int> createOrGetPrivateConversation(Ref ref, String otherUserId) async {
       .from('conversations')
       .insert({
         'name': conversationName, // Use conversation name as unique identifier
-        'description': 'Private conversation between $currentUserId and $otherUserId',
+        'description':
+            'Private conversation between $currentUserId and $otherUserId',
         'created_by': currentUserId,
         'is_active': true,
         'created_at': DateTime.now().toIso8601String(),
@@ -154,7 +159,7 @@ Future<int> createOrGetPrivateConversation(Ref ref, String otherUserId) async {
 // Update user profile function
 Future<void> updateUserProfile(
   Ref ref, {
-  String? displayName,
+  String? userName,
   String? bio,
   String? website,
   String? phoneNumber,
@@ -166,7 +171,7 @@ Future<void> updateUserProfile(
   final supabase = ref.read(supabaseProvider);
 
   final updateData = <String, dynamic>{};
-  if (displayName != null) updateData['display_name'] = displayName;
+  if (userName != null) updateData['display_name'] = userName;
   if (bio != null) updateData['bio'] = bio;
   if (website != null) updateData['website'] = website;
   if (phoneNumber != null) updateData['phone_number'] = phoneNumber;
