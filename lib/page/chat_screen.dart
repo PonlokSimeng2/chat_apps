@@ -244,21 +244,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   String _formatDateSeparator(DateTime dateUtc) {
-    final local = dateUtc.toLocal();
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final messageDay = DateTime(local.year, local.month, local.day);
-    final diffDays = today.difference(messageDay).inDays;
+    final year = dateUtc.year.toString().padLeft(4, '0');
+    final month = dateUtc.month.toString().padLeft(2, '0');
+    final day = dateUtc.day.toString().padLeft(2, '0');
+    final hour = dateUtc.hour.toString().padLeft(2, '0');
+    final minute = dateUtc.minute.toString().padLeft(2, '0');
 
-    final hour = local.hour;
-    final minute = local.minute.toString().padLeft(2, '0');
-    final period = hour >= 12 ? 'PM' : 'AM';
-    final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
-    final time = '$displayHour:$minute $period';
-
-    if (diffDays == 0) return 'Today $time';
-    if (diffDays == 1) return 'Yesterday $time';
-    return '${local.day}/${local.month} $time';
+    return '$year-$month-$day $hour:$minute';
   }
 
   bool _isSameDay(DateTime a, DateTime b) {
@@ -625,7 +617,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       isScrollControlled: true,
       builder: (context) => Consumer(
         builder: (context, ref, _) {
-          final emojisAsync = ref.watch(emojisProvider);
           return Column(
             mainAxisAlignment: MainAxisAlignment.end,
             mainAxisSize: MainAxisSize.min,
@@ -644,68 +635,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
-                      child: emojisAsync.when(
-                        loading: () => const Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                        error: (_, __) => Row(
-                          children: ['❤️', '😆', '😮', '😢', '😡', '👍']
-                              .map(
-                                (e) => GestureDetector(
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    _handleEmojiReaction(e, message);
-                                  },
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                    ),
-                                    child: Text(
-                                      e,
-                                      style: const TextStyle(fontSize: 28),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: ['👍', '❤️', '😆', '😮', '😢', '😡']
+                            .map(
+                              (e) => GestureDetector(
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _handleEmojiReaction(e, message);
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
+                                  child: Text(
+                                    e,
+                                    style: TextStyle(
+                                      fontSize:
+                                          28 *
+                                          (foundation.defaultTargetPlatform ==
+                                                  TargetPlatform.iOS
+                                              ? 1.20
+                                              : 1.0),
                                     ),
                                   ),
                                 ),
-                              )
-                              .toList(),
-                        ),
-                        data: (emojis) => Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: emojis
-                              .where((e) => e.category == 'reaction')
-                              .map(
-                                (e) => GestureDetector(
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    _handleEmojiReaction(e.emoji, message);
-                                  },
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                    ),
-                                    child: Text(
-                                      e.emoji,
-                                      style: TextStyle(
-                                        fontSize:
-                                            28 *
-                                            (foundation.defaultTargetPlatform ==
-                                                    TargetPlatform.iOS
-                                                ? 1.20
-                                                : 1.0),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                        ),
+                              ),
+                            )
+                            .toList(),
                       ),
                     ),
                     GestureDetector(
@@ -837,6 +794,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             bottomActionBarConfig: const BottomActionBarConfig(
               backgroundColor: Color(0xFF2C2C2E),
               buttonIconColor: Colors.white,
+              enabled: false,
             ),
           ),
         ),

@@ -9,44 +9,9 @@ part 'emoji_provider.g.dart';
 // FETCH ALL EMOJIS
 // ============================================
 
-@riverpod
-Future<List<EmojiModel>> emojis(Ref ref) async {
-  try {
-    final supabase = ref.watch(supabaseProvider);
-
-    final data = await supabase.client
-        .from('emojis')
-        .select()
-        .order('sort_order');
-
-    return (data as List)
-        .map((e) => EmojiModel.fromJson(e as Map<String, dynamic>))
-        .toList();
-  } catch (e) {
-    log('Error fetching emojis: $e');
-    rethrow;
-  }
-}
-
 // ============================================
 // FETCH EMOJIS GROUPED BY CATEGORY
 // ============================================
-
-@riverpod
-Future<Map<String, List<EmojiModel>>> emojisByCategory(Ref ref) async {
-  try {
-    final emojiList = await ref.watch(emojisProvider.future);
-
-    final Map<String, List<EmojiModel>> grouped = {};
-    for (final emoji in emojiList) {
-      grouped.putIfAbsent(emoji.category, () => []).add(emoji);
-    }
-    return grouped;
-  } catch (e) {
-    log('Error grouping emojis by category: $e');
-    rethrow;
-  }
-}
 
 // ============================================
 // FETCH EMOJIS BY SINGLE CATEGORY

@@ -12,14 +12,14 @@ class MessageModel {
   final String? fileName;
   final int? fileSize;
   final int? replyToMessageId;
-  final bool? isEdited;
-  final bool? isDeleted;
+  final bool isEdited;
+  final bool isDeleted;
   final DateTime? readAt;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final MessageStatus status;
 
-  MessageModel({
+  const MessageModel({
     this.id,
     this.tempId,
     required this.conversationId,
@@ -31,28 +31,21 @@ class MessageModel {
     this.fileName,
     this.fileSize,
     this.replyToMessageId,
-    this.isEdited,
-    this.isDeleted,
+    this.isEdited = false,
+    this.isDeleted = false,
     this.readAt,
     this.createdAt,
     this.updatedAt,
     this.status = MessageStatus.sent,
   });
 
-  // ✅ Robust UTC parser — handles all Supabase timestamp formats
-  static DateTime? _parseUtc(dynamic value) {
+  /// Parse PostgreSQL timestamptz from Supabase
+  static DateTime? _parseDateTime(dynamic value) {
     if (value == null) return null;
-    // Replace space with T for ISO 8601 compatibility
-    // e.g. "2026-04-12 23:35:51+00" → "2026-04-12T23:35:51+00"
-    final str = value.toString().replaceFirst(' ', 'T');
+
     try {
-      if (!str.contains('+') && !str.endsWith('Z')) {
-        // No timezone info → treat as UTC by appending Z
-        return DateTime.parse('${str}Z').toUtc();
-      }
-      return DateTime.parse(str).toUtc();
-    } catch (e) {
-      // If parse fails, return null (will show "now" as fallback)
+      return DateTime.parse(value.toString());
+    } catch (_) {
       return null;
     }
   }
@@ -76,9 +69,9 @@ class MessageModel {
           : null,
       isEdited: json['is_edited'] ?? false,
       isDeleted: json['is_deleted'] ?? false,
-      readAt: _parseUtc(json['read_at']),
-      createdAt: _parseUtc(json['created_at']),
-      updatedAt: _parseUtc(json['updated_at']),
+      readAt: _parseDateTime(json['read_at']),
+      createdAt: _parseDateTime(json['created_at']),
+      updatedAt: _parseDateTime(json['updated_at']),
       status: _parseMessageStatus(json),
     );
   }
@@ -86,11 +79,13 @@ class MessageModel {
   static MessageStatus _parseMessageStatus(Map<String, dynamic> json) {
     if (json['read_at'] != null) {
       return MessageStatus.read;
-    } else if (json['id'] != null) {
-      return MessageStatus.sent;
-    } else {
-      return MessageStatus.sending;
     }
+
+    if (json['id'] != null) {
+      return MessageStatus.sent;
+    }
+
+    return MessageStatus.sending;
   }
 
   Map<String, dynamic> toJson() {
@@ -106,8 +101,8 @@ class MessageModel {
       'file_name': fileName,
       'file_size': fileSize,
       'reply_to_message_id': replyToMessageId,
-      'is_edited': isEdited ?? false,
-      'is_deleted': isDeleted ?? false,
+      'is_edited': isEdited,
+      'is_deleted': isDeleted,
       'read_at': readAt?.toUtc().toIso8601String(),
       'created_at': createdAt?.toUtc().toIso8601String(),
       'updated_at': updatedAt?.toUtc().toIso8601String(),
@@ -138,8 +133,8 @@ class MessageModel {
       id: id ?? this.id,
       tempId: tempId ?? this.tempId,
       conversationId: conversationId ?? this.conversationId,
-      receiverId: receiverId ?? this.receiverId,
       senderId: senderId ?? this.senderId,
+      receiverId: receiverId ?? this.receiverId,
       content: content ?? this.content,
       messageType: messageType ?? this.messageType,
       fileUrl: fileUrl ?? this.fileUrl,
@@ -161,6 +156,13 @@ class MessageModel {
 
   String get uniqueId => tempId ?? id.toString();
 
+  /// Local timezone helpers (Cambodia = UTC+7 automatically)
+  DateTime? get localCreatedAt => createdAt?.toLocal();
+
+  DateTime? get localUpdatedAt => updatedAt?.toLocal();
+
+  DateTime? get localReadAt => readAt?.toLocal();
+
   factory MessageModel.createTemp({
     required int conversationId,
     required String senderId,
@@ -168,16 +170,17 @@ class MessageModel {
     required String content,
     String messageType = 'text',
   }) {
-    final tempId =
-        'temp_${DateTime.now().millisecondsSinceEpoch}_${senderId.hashCode}';
+    final now = DateTime.now().toUtc();
+
     return MessageModel(
-      tempId: tempId,
+      tempId: 'temp_${now.millisecondsSinceEpoch}_${senderId.hashCode}',
       conversationId: conversationId,
       senderId: senderId,
       receiverId: receiverId,
       content: content,
       messageType: messageType,
-      createdAt: DateTime.now().toUtc(), // ✅ UTC
+      createdAt: now,
+      updatedAt: now,
       status: MessageStatus.sending,
     );
   }
